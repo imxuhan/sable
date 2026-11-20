@@ -3,6 +3,7 @@ import { Check, Copy, Minus, Square, X } from 'lucide-react'
 import { BUILTIN_THEMES } from '@shared/defaults'
 import type { MenuCommand } from '@shared/types'
 import { useEditorStore } from '../stores/useEditorStore'
+import sableLogoUrl from '../assets/logo.png'
 
 interface MenuEntry {
   type?: 'item' | 'separator' | 'header'
@@ -24,9 +25,14 @@ interface TopMenuGroup {
 interface TitleMenuBarProps {
   isDark: boolean
   onCommand: (cmd: MenuCommand, payload?: string) => void
+  onRequestCloseWindow: () => void
 }
 
-export const TitleMenuBar: React.FC<TitleMenuBarProps> = ({ isDark, onCommand }) => {
+export const TitleMenuBar: React.FC<TitleMenuBarProps> = ({
+  isDark,
+  onCommand,
+  onRequestCloseWindow
+}) => {
   const { preferences, customThemes, recentFiles, getActiveTab } = useEditorStore()
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [maximized, setMaximized] = useState(false)
@@ -102,12 +108,14 @@ export const TitleMenuBar: React.FC<TitleMenuBarProps> = ({ isDark, onCommand })
         { type: 'separator' },
         { label: '导出为 PDF...', shortcut: 'Ctrl+Alt+P', cmd: 'file:export-pdf' },
         { label: '导出为 HTML...', shortcut: 'Ctrl+Alt+H', cmd: 'file:export-html' },
+        { label: '导出为 Word (.docx)...', cmd: 'file:export-docx' },
+        { label: '导出为 LaTeX (.tex)...', cmd: 'file:export-latex' },
         { type: 'separator' },
         { label: '偏好设置...', shortcut: 'Ctrl+,', cmd: 'file:preferences' },
         { type: 'separator' },
         {
           label: '退出窗口',
-          customAction: () => window.sable && void window.sable.windowClose()
+          customAction: () => onRequestCloseWindow()
         }
       ]
     },
@@ -160,8 +168,11 @@ export const TitleMenuBar: React.FC<TitleMenuBarProps> = ({ isDark, onCommand })
         { label: '加粗', shortcut: 'Ctrl+B', cmd: 'format:strong' },
         { label: '斜体', shortcut: 'Ctrl+I', cmd: 'format:em' },
         { label: '删除线', shortcut: 'Alt+Shift+5', cmd: 'format:strike' },
+        { label: '上标', cmd: 'format:sup' },
+        { label: '下标', cmd: 'format:sub' },
         { label: '行内代码', shortcut: 'Ctrl+`', cmd: 'format:code' },
         { label: '行内公式', cmd: 'format:math-inline' },
+        { label: '插入脚注', cmd: 'format:footnote' },
         { type: 'separator' },
         { label: '超链接', shortcut: 'Ctrl+K', cmd: 'format:link' },
         { label: '插入图片...', shortcut: 'Ctrl+Shift+I', cmd: 'format:image' },
@@ -280,9 +291,12 @@ export const TitleMenuBar: React.FC<TitleMenuBarProps> = ({ isDark, onCommand })
       }`}
     >
       <div className="sable-no-drag flex h-full items-center pl-3">
-        <div className="mr-2.5 flex h-[1.55em] w-[1.55em] items-center justify-center rounded-md bg-neutral-900 font-serif text-[0.85em] font-bold text-white dark:bg-neutral-100 dark:text-neutral-900">
-          S
-        </div>
+        <img
+          src={sableLogoUrl}
+          alt="Sable"
+          className="mr-2.5 h-[1.55em] w-[1.55em] rounded-md object-contain"
+          draggable={false}
+        />
 
         <nav className="flex h-full items-center gap-0.5">
           {menuGroups.map((group) => {
@@ -409,7 +423,7 @@ export const TitleMenuBar: React.FC<TitleMenuBarProps> = ({ isDark, onCommand })
         <button
           type="button"
           title="关闭"
-          onClick={() => window.sable && void window.sable.windowClose()}
+          onClick={() => onRequestCloseWindow()}
           className="flex w-11 items-center justify-center opacity-75 transition hover:bg-red-600 hover:text-white hover:opacity-100"
         >
           <X className="h-4 w-4" />

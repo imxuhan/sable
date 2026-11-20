@@ -6,7 +6,8 @@ import type {
   CustomThemeDescriptor,
   DraftData,
   PersistedAppState,
-  SablePreferences
+  SablePreferences,
+  WindowBounds
 } from '@shared/types'
 
 const STATE_FILE = 'sable-state.json'
@@ -60,7 +61,8 @@ export async function loadPersistedState(): Promise<PersistedAppState> {
       preferences: { ...DEFAULT_PREFERENCES, ...(parsed.preferences ?? {}) },
       recentFiles: Array.isArray(parsed.recentFiles) ? parsed.recentFiles.slice(0, 15) : [],
       recentWorkspace: typeof parsed.recentWorkspace === 'string' ? parsed.recentWorkspace : null,
-      drafts: Array.isArray(parsed.drafts) ? parsed.drafts : []
+      drafts: Array.isArray(parsed.drafts) ? parsed.drafts : [],
+      windowBounds: parsed.windowBounds
     }
   } catch {
     cachedState = {
@@ -109,6 +111,14 @@ export async function updateRecentWorkspace(workspacePath: string | null): Promi
   await flushState({
     ...current,
     recentWorkspace: workspacePath
+  })
+}
+
+export async function updateWindowBounds(windowBounds: WindowBounds): Promise<void> {
+  const current = await loadPersistedState()
+  await flushState({
+    ...current,
+    windowBounds
   })
 }
 

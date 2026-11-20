@@ -53,9 +53,38 @@ export function parseImgHtmlTag(rawHtml: string): ParsedImgTag | null {
 
 const markdownParser = unified()
   .use(remarkParse)
-  .use(remarkGfm)
+  .use(remarkGfm, { singleTilde: false })
   .use(remarkMath)
   .use(remarkFrontmatter, ['yaml'])
+
+function tokenizeSupAndSubInLine(line: string, baseMarks: readonly Mark[]): PMNode[] {
+  if (!line) return []
+  const regex = /(\^([^\^\s\n][^\^\n]*?)\^)|((?<!~)~([^~\s\n][^~\n]*?)~(?!~))/g
+  const nodes: PMNode[] = []
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+
+  while ((match = regex.exec(line)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(sableSchema.text(line.slice(lastIndex, match.index), baseMarks))
+    }
+    if (match[2] !== undefined) {
+      const supMark = sableSchema.marks.sup.create()
+      const cleanMarks = baseMarks.filter((m) => m.type !== sableSchema.marks.sub)
+      nodes.push(sableSchema.text(match[2], supMark.addToSet(cleanMarks)))
+    } else if (match[4] !== undefined) {
+      const subMark = sableSchema.marks.sub.create()
+      const cleanMarks = baseMarks.filter((m) => m.type !== sableSchema.marks.sup)
+      nodes.push(sableSchema.text(match[4], subMark.addToSet(cleanMarks)))
+    }
+    lastIndex = match.index + match[0].length
+  }
+
+  if (lastIndex < line.length) {
+    nodes.push(sableSchema.text(line.slice(lastIndex), baseMarks))
+  }
+  return nodes
+}
 
 function convertTextWithHardBreaks(text: string, marks: readonly Mark[]): PMNode[] {
   if (!text) return []
@@ -63,7 +92,7 @@ function convertTextWithHardBreaks(text: string, marks: readonly Mark[]): PMNode
   const nodes: PMNode[] = []
   lines.forEach((line, idx) => {
     if (line.length > 0) {
-      nodes.push(sableSchema.text(line, marks))
+      nodes.push(...tokenizeSupAndSubInLine(line, marks))
     }
     if (idx < lines.length - 1) {
       nodes.push(sableSchema.nodes.hard_break.create())
@@ -148,6 +177,15 @@ function convertInlineNodes(
         result.push(
           sableSchema.nodes.math_inline.create({
             value: anyChild.value || ''
+          })
+        )
+        break
+      }
+      case 'footnoteReference': {
+        const fnChild = anyChild as PhrasingContent & { identifier?: string; label?: string }
+        result.push(
+          sableSchema.nodes.footnote_ref.create({
+            id: fnChild.label || fnChild.identifier || '1'
           })
         )
         break
@@ -271,6 +309,21 @@ function convertBlockNode(node: Content): PMNode[] {
       return [sableSchema.nodes.horizontal_rule.create()]
     }
 
+    case 'footnoteDefinition': {
+      const fnNode = anyNode as Content & {
+        identifier?: string
+        label?: string
+        children?: Content[]
+      }
+      const inner = (fnNode.children || []).flatMap((c) => convertBlockNode(c))
+      return [
+        sableSchema.nodes.footnote_def.create(
+          { id: fnNode.label || fnNode.identifier || '1' },
+          inner.length > 0 ? inner : [sableSchema.nodes.paragraph.create()]
+        )
+      ]
+    }
+
     case 'table': {
       if (node.type === 'table') {
         const alignList = node.align || []
@@ -369,6 +422,10 @@ function applyMarksToText(text: string, marks: readonly Mark[]): string {
       output = `*${output}*`
     } else if (mark.type === sableSchema.marks.strike) {
       output = `~~${output}~~`
+    } else if (mark.type === sableSchema.marks.sup) {
+      output = `^${output}^`
+    } else if (mark.type === sableSchema.marks.sub) {
+      output = `~${output}~`
     } else if (mark.type === sableSchema.marks.link) {
       const titlePart = mark.attrs.title ? ` "${mark.attrs.title.replace(/"/g, '\\"')}"` : ''
       output = `[${output}](${mark.attrs.href}${titlePart})`
@@ -392,6 +449,9 @@ function serializeInline(parent: PMNode, inTableCell = false): string {
     } else if (child.type === sableSchema.nodes.math_inline) {
       const expr = String(child.attrs.value || '').trim()
       parts.push(`$${expr}$`)
+    } else if (child.type === sableSchema.nodes.footnote_ref) {
+      const fnId = String(child.attrs.id || '1').trim()
+      parts.push(`[^${fnId}]`)
     } else if (child.type === sableSchema.nodes.image) {
       const { src, alt, title, zoom, width } = child.attrs
       if (zoom !== null || width !== null) {
@@ -537,6 +597,18 @@ function serializeBlock(node: PMNode): string {
 
     case sableSchema.nodes.horizontal_rule:
       return '---'
+
+    case sableSchema.nodes.footnote_def: {
+      const fnId = String(node.attrs.id || '1').trim()
+      const subBlocks: string[] = []
+      node.forEach((child) => subBlocks.push(serializeBlock(child)))
+      const [first = '', ...rest] = subBlocks
+      let line = `[^${fnId}]: ${first}`
+      if (rest.length > 0) {
+        line += '\n\n' + rest.map((b) => indentLines(b, '    ')).join('\n\n')
+      }
+      return line
+    }
 
     case sableSchema.nodes.table:
       return serializeTable(node)

@@ -1,11 +1,11 @@
 import React, { useEffect, useImperativeHandle, useRef, useState } from 'react'
-import { EditorState, TextSelection } from 'prosemirror-state'
+import type { Node as PMNode } from 'prosemirror-model'
+import { EditorState, Plugin, PluginKey, TextSelection } from 'prosemirror-state'
 import { Decoration, DecorationSet, EditorView } from 'prosemirror-view'
 import { history } from 'prosemirror-history'
 import { dropCursor } from 'prosemirror-dropcursor'
 import { gapCursor } from 'prosemirror-gapcursor'
 import { columnResizing, isInTable, tableEditing } from 'prosemirror-tables'
-import { Plugin, PluginKey } from 'prosemirror-state'
 import {
   AlignCenter,
   AlignLeft,
@@ -72,39 +72,85 @@ interface LiveEditorProps {
   onOpenDroppedMarkdown?: (filePath: string) => void
 }
 
-const searchHighlightKey = new PluginKey<{ query: string }>('sable-live-search')
+export interface SearchSpec {
+  query: string
+  caseSensitive: boolean
+  wholeWord: boolean
+  useRegex: boolean
+}
 
-function createSearchHighlightPlugin(): Plugin<{ query: string }> {
-  return new Plugin<{ query: string }>({
+export function buildSearchRegExp(spec: SearchSpec): RegExp | null {
+  if (!spec.query) return null
+  try {
+    let source = spec.useRegex
+      ? spec.query
+      : spec.query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    if (spec.wholeWord) {
+      source = `\\b(?:${source})\\b`
+    }
+    return new RegExp(source, spec.caseSensitive ? 'g' : 'gi')
+  } catch {
+    return null
+  }
+}
+
+export function collectSearchMatches(
+  doc: PMNode,
+  spec: SearchSpec
+): Array<{ from: number; to: number; text: string }> {
+  const re = buildSearchRegExp(spec)
+  if (!re) return []
+  const matches: Array<{ from: number; to: number; text: string }> = []
+  doc.descendants((node, pos) => {
+    if (!node.isText || !node.text) return
+    re.lastIndex = 0
+    let m: RegExpExecArray | null
+    while ((m = re.exec(node.text)) !== null) {
+      if (m[0].length === 0) {
+        re.lastIndex++
+        continue
+      }
+      matches.push({
+        from: pos + m.index,
+        to: pos + m.index + m[0].length,
+        text: m[0]
+      })
+      if (matches.length >= 2000) break
+    }
+  })
+  return matches
+}
+
+const searchHighlightKey = new PluginKey<SearchSpec>('sable-live-search')
+
+function createSearchHighlightPlugin(): Plugin<SearchSpec> {
+  return new Plugin<SearchSpec>({
     key: searchHighlightKey,
     state: {
-      init: () => ({ query: '' }),
+      init: () => ({ query: '', caseSensitive: false, wholeWord: false, useRegex: false }),
       apply(tr, prev) {
-        const meta = tr.getMeta(searchHighlightKey)
+        const meta = tr.getMeta(searchHighlightKey) as SearchSpec | undefined
         if (meta && typeof meta.query === 'string') {
-          return { query: meta.query }
+          return meta
         }
         return prev
       }
     },
     props: {
       decorations(state) {
-        const query = searchHighlightKey.getState(state)?.query?.trim().toLowerCase()
-        if (!query) return DecorationSet.empty
-        const decos: Decoration[] = []
-        state.doc.descendants((node, pos) => {
-          if (!node.isText || !node.text) return
-          const lower = node.text.toLowerCase()
-          let idx = lower.indexOf(query)
-          while (idx !== -1) {
-            decos.push(
-              Decoration.inline(pos + idx, pos + idx + query.length, {
-                class: 'sable-search-match'
-              })
-            )
-            idx = lower.indexOf(query, idx + query.length)
-          }
-        })
+        const spec = searchHighlightKey.getState(state)
+        if (!spec || !spec.query) return DecorationSet.empty
+        const matches = collectSearchMatches(state.doc, spec)
+        if (matches.length === 0) return DecorationSet.empty
+        const { from: selFrom, to: selTo } = state.selection
+        const decos = matches.map((m) =>
+          Decoration.inline(m.from, m.to, {
+            class:
+              m.from === selFrom && m.to === selTo
+                ? 'sable-search-match sable-search-match-active'
+                : 'sable-search-match'
+          })
+        )
         return DecorationSet.create(state.doc, decos)
       }
     }
@@ -176,6 +222,13 @@ export const LiveEditor = React.forwardRef<LiveEditorHandle, LiveEditorProps>((p
 
   const [findQuery, setFindQuery] = useState('')
   const [replaceQuery, setReplaceQuery] = useState('')
+  const [caseSensitive, setCaseSensitive] = useState(false)
+  const [wholeWord, setWholeWord] = useState(false)
+  const [useRegex, setUseRegex] = useState(false)
+  const [matchSummary, setMatchSummary] = useState<{ current: number; total: number }>({
+    current: 0,
+    total: 0
+  })
 
   const openLinkModalForSelection = (overrideRange?: {
     from: number
@@ -331,6 +384,27 @@ export const LiveEditor = React.forwardRef<LiveEditorHandle, LiveEditorProps>((p
       },
       handleClick(v, _pos, event) {
         const target = event.target as HTMLElement | null
+        const fnSup = target?.closest('sup[data-type="footnote-ref"]') as HTMLElement | null
+        if (fnSup) {
+          const fnId = fnSup.getAttribute('data-footnote-id')
+          if (fnId) {
+            let targetPos = -1
+            v.state.doc.descendants((n, p) => {
+              if (n.type === sableSchema.nodes.footnote_def && n.attrs.id === fnId) {
+                targetPos = p
+                return false
+              }
+            })
+            if (targetPos !== -1) {
+              v.dispatch(
+                v.state.tr
+                  .setSelection(TextSelection.near(v.state.doc.resolve(targetPos + 2)))
+                  .scrollIntoView()
+              )
+              return true
+            }
+          }
+        }
         const anchor = target?.closest('a[href]') as HTMLAnchorElement | null
         if (anchor && (event.ctrlKey || event.metaKey)) {
           event.preventDefault()
@@ -484,9 +558,26 @@ export const LiveEditor = React.forwardRef<LiveEditorHandle, LiveEditorProps>((p
   useEffect(() => {
     const view = viewRef.current
     if (!view || view.isDestroyed) return
-    const query = showFindBar ? findQuery : ''
-    view.dispatch(view.state.tr.setMeta(searchHighlightKey, { query }))
-  }, [findQuery, showFindBar])
+    const spec: SearchSpec = {
+      query: showFindBar ? findQuery : '',
+      caseSensitive,
+      wholeWord,
+      useRegex
+    }
+    view.dispatch(view.state.tr.setMeta(searchHighlightKey, spec))
+    if (!spec.query) {
+      setMatchSummary({ current: 0, total: 0 })
+    } else {
+      const matches = collectSearchMatches(view.state.doc, spec)
+      const activeIdx = matches.findIndex(
+        (m) => m.from === view.state.selection.from && m.to === view.state.selection.to
+      )
+      setMatchSummary({
+        current: activeIdx >= 0 ? activeIdx + 1 : matches.length > 0 ? 1 : 0,
+        total: matches.length
+      })
+    }
+  }, [findQuery, caseSensitive, wholeWord, useRegex, showFindBar, markdown])
 
   useImperativeHandle(ref, () => ({
     executeCommand(cmd: MenuCommand) {
@@ -551,46 +642,82 @@ export const LiveEditor = React.forwardRef<LiveEditorHandle, LiveEditorProps>((p
     view.focus()
   }
 
+  const currentSearchSpec = (): SearchSpec => ({
+    query: findQuery,
+    caseSensitive,
+    wholeWord,
+    useRegex
+  })
+
   const findNextMatch = (direction: 1 | -1): void => {
     const view = viewRef.current
-    const q = findQuery.trim().toLowerCase()
-    if (!view || !q) return
-    const matches: Array<{ from: number; to: number }> = []
-    view.state.doc.descendants((node, pos) => {
-      if (!node.isText || !node.text) return
-      const lower = node.text.toLowerCase()
-      let idx = lower.indexOf(q)
-      while (idx !== -1) {
-        matches.push({ from: pos + idx, to: pos + idx + q.length })
-        idx = lower.indexOf(q, idx + q.length)
-      }
-    })
-    if (matches.length === 0) return
-    const curPos = view.state.selection.to
-    let target = matches[0]
-    if (direction === 1) {
-      target = matches.find((m) => m.from >= curPos) || matches[0]
-    } else {
-      const before = matches.filter((m) => m.to <= view.state.selection.from)
-      target = before.length > 0 ? before[before.length - 1] : matches[matches.length - 1]
+    if (!view || !findQuery) return
+    const spec = currentSearchSpec()
+    const matches = collectSearchMatches(view.state.doc, spec)
+    if (matches.length === 0) {
+      setMatchSummary({ current: 0, total: 0 })
+      return
     }
+    const curPos = view.state.selection.to
+    let targetIdx = 0
+    if (direction === 1) {
+      const foundIdx = matches.findIndex((m) => m.from >= curPos)
+      targetIdx = foundIdx >= 0 ? foundIdx : 0
+    } else {
+      let lastBefore = -1
+      for (let i = 0; i < matches.length; i++) {
+        if (matches[i].to <= view.state.selection.from) lastBefore = i
+      }
+      targetIdx = lastBefore >= 0 ? lastBefore : matches.length - 1
+    }
+    const target = matches[targetIdx]
     view.dispatch(
       view.state.tr
         .setSelection(TextSelection.create(view.state.doc, target.from, target.to))
         .scrollIntoView()
     )
+    setMatchSummary({ current: targetIdx + 1, total: matches.length })
+  }
+
+  const computeReplacementText = (matchedText: string, spec: SearchSpec): string => {
+    if (!spec.useRegex) return replaceQuery
+    const singleRe = buildSearchRegExp({ ...spec })
+    if (!singleRe) return replaceQuery
+    const nonGlobal = new RegExp(singleRe.source, spec.caseSensitive ? '' : 'i')
+    return matchedText.replace(nonGlobal, replaceQuery)
   }
 
   const replaceCurrentMatch = (): void => {
     const view = viewRef.current
-    const q = findQuery.trim().toLowerCase()
-    if (!view || !q) return
+    if (!view || !findQuery) return
+    const spec = currentSearchSpec()
+    const matches = collectSearchMatches(view.state.doc, spec)
+    if (matches.length === 0) return
+
     const { from, to } = view.state.selection
-    const selected = view.state.doc.textBetween(from, to, '')
-    if (selected.toLowerCase() === q) {
-      view.dispatch(view.state.tr.insertText(replaceQuery, from, to))
+    const activeMatch = matches.find((m) => m.from === from && m.to === to)
+    if (activeMatch) {
+      const replacement = computeReplacementText(activeMatch.text, spec)
+      view.dispatch(view.state.tr.insertText(replacement, activeMatch.from, activeMatch.to))
     }
     findNextMatch(1)
+  }
+
+  const replaceAllMatches = (): void => {
+    const view = viewRef.current
+    if (!view || !findQuery) return
+    const spec = currentSearchSpec()
+    const matches = collectSearchMatches(view.state.doc, spec)
+    if (matches.length === 0) return
+
+    let tr = view.state.tr
+    for (let i = matches.length - 1; i >= 0; i--) {
+      const m = matches[i]
+      const replacement = computeReplacementText(m.text, spec)
+      tr = tr.insertText(replacement, m.from, m.to)
+    }
+    view.dispatch(tr.scrollIntoView())
+    setMatchSummary({ current: 0, total: 0 })
   }
 
   const filteredSlashItems = slashState
@@ -613,7 +740,7 @@ export const LiveEditor = React.forwardRef<LiveEditorHandle, LiveEditorProps>((p
       }}
     >
       {showFindBar && (
-        <div className="sticky top-3 z-30 mx-auto flex max-w-xl items-center gap-2 rounded-lg border border-neutral-200 bg-white/95 px-3 py-2 shadow-lg backdrop-blur dark:border-neutral-700 dark:bg-neutral-800/95">
+        <div className="sticky top-3 z-30 mx-auto flex max-w-3xl flex-wrap items-center gap-1.5 rounded-lg border border-neutral-200 bg-white/95 px-3 py-2 shadow-lg backdrop-blur dark:border-neutral-700 dark:bg-neutral-800/95">
           <input
             type="text"
             value={findQuery}
@@ -624,8 +751,48 @@ export const LiveEditor = React.forwardRef<LiveEditorHandle, LiveEditorProps>((p
             }}
             placeholder="查找内容..."
             autoFocus
+            spellCheck={false}
             className="w-40 rounded border border-neutral-300 bg-transparent px-2 py-1 text-xs outline-none focus:border-blue-500 dark:border-neutral-600"
           />
+          <button
+            type="button"
+            title="区分大小写"
+            onClick={() => setCaseSensitive(!caseSensitive)}
+            className={`rounded border px-1.5 py-0.5 font-mono text-[11px] ${
+              caseSensitive
+                ? 'border-blue-500 bg-blue-500/15 font-semibold text-blue-600 dark:text-blue-300'
+                : 'border-neutral-300 opacity-70 hover:opacity-100 dark:border-neutral-600'
+            }`}
+          >
+            Aa
+          </button>
+          <button
+            type="button"
+            title="整词匹配"
+            onClick={() => setWholeWord(!wholeWord)}
+            className={`rounded border px-1.5 py-0.5 font-mono text-[11px] ${
+              wholeWord
+                ? 'border-blue-500 bg-blue-500/15 font-semibold text-blue-600 dark:text-blue-300'
+                : 'border-neutral-300 opacity-70 hover:opacity-100 dark:border-neutral-600'
+            }`}
+          >
+            [ab]
+          </button>
+          <button
+            type="button"
+            title="使用正则表达式"
+            onClick={() => setUseRegex(!useRegex)}
+            className={`rounded border px-1.5 py-0.5 font-mono text-[11px] ${
+              useRegex
+                ? 'border-blue-500 bg-blue-500/15 font-semibold text-blue-600 dark:text-blue-300'
+                : 'border-neutral-300 opacity-70 hover:opacity-100 dark:border-neutral-600'
+            }`}
+          >
+            .*
+          </button>
+          <span className="min-w-12 text-center font-mono text-[11px] opacity-65">
+            {findQuery ? `${matchSummary.current}/${matchSummary.total}` : '0/0'}
+          </span>
           <input
             type="text"
             value={replaceQuery}
@@ -635,7 +802,8 @@ export const LiveEditor = React.forwardRef<LiveEditorHandle, LiveEditorProps>((p
               if (e.key === 'Escape') onCloseFindBar()
             }}
             placeholder="替换为..."
-            className="w-36 rounded border border-neutral-300 bg-transparent px-2 py-1 text-xs outline-none focus:border-blue-500 dark:border-neutral-600"
+            spellCheck={false}
+            className="w-32 rounded border border-neutral-300 bg-transparent px-2 py-1 text-xs outline-none focus:border-blue-500 dark:border-neutral-600"
           />
           <button
             type="button"
@@ -657,6 +825,13 @@ export const LiveEditor = React.forwardRef<LiveEditorHandle, LiveEditorProps>((p
             className="rounded px-2 py-1 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700"
           >
             替换
+          </button>
+          <button
+            type="button"
+            onClick={replaceAllMatches}
+            className="rounded px-2 py-1 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700"
+          >
+            全部替换
           </button>
           <button
             type="button"

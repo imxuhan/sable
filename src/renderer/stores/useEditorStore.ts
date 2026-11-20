@@ -103,6 +103,11 @@ interface EditorStoreState {
   updateActiveContent: (content: string, scrollRatio?: number) => void
   markTabSaved: (id: string, filePath: string, content: string, mtimeMs: number) => void
   applyExternalUpdate: (filePath: string, content: string, mtimeMs: number) => void
+  applyEntryRenamed: (
+    oldPath: string,
+    newPath: string,
+    updatedContent: string | null
+  ) => void
 
   setHeadings: (headings: Array<{ level: number; text: string; pos: number }>) => void
   updatePreferences: (patch: Partial<SablePreferences>) => void
@@ -324,6 +329,25 @@ export const useEditorStore = create<EditorStoreState>((set, get) => ({
       tabs: nextTabs,
       ...(target.id === activeTabId ? { stats: computeDocumentStats(content) } : {})
     })
+  },
+
+  applyEntryRenamed: (oldPath, newPath, updatedContent) => {
+    set((state) => ({
+      tabs: state.tabs.map((t) => {
+        if (!t.filePath || t.filePath.toLowerCase() !== oldPath.toLowerCase()) {
+          return t
+        }
+        const nextContent = updatedContent !== null ? updatedContent : t.content
+        return {
+          ...t,
+          filePath: newPath,
+          title: fileNameFromPath(newPath),
+          content: nextContent,
+          savedContent: updatedContent !== null ? updatedContent : t.savedContent,
+          isDirty: updatedContent !== null ? false : t.isDirty
+        }
+      })
+    }))
   },
 
   setHeadings: (headings) => set({ headings }),

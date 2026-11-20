@@ -11,6 +11,8 @@ import { createMarkdownInputRules, createMidPairTypingPlugin } from '@renderer/e
 import { createEditorKeymaps, getHeadingsFromState } from '@renderer/editor/plugins/commandsAndKeymap'
 import { computeDocumentStats, useEditorStore } from '@renderer/stores/useEditorStore'
 import { buildStandaloneExportHtml } from '@renderer/editor/exportHtmlBuilder'
+import { collectSearchMatches } from '@renderer/editor/LiveEditor'
+import { rewriteRenamedAssetLinks } from '../src/main/fileService'
 
 describe('Inline Syntax Reveal & IME Guard', () => {
   it('reveals ** markers only when cursor sits inside strong text and suppresses during IME composition', () => {
@@ -170,5 +172,48 @@ describe('Outline Extraction, Stats & Export Builder', () => {
     expect(html).toContain('sable-toc-card')
     expect(html).toContain('href="#heading-0"')
     expect(html).toContain('katex')
+  })
+
+  it('rewrites companion .assets relative links when a markdown file is renamed', () => {
+    const original = [
+      '# 第二章',
+      '![架构图](./ch2_draft.assets/arch.png)',
+      '<img src="./ch2_draft.assets/zoom.png" style="zoom: 50%;" />'
+    ].join('\n')
+
+    const updated = rewriteRenamedAssetLinks(original, 'ch2_draft', 'chapter2')
+    expect(updated).toContain('(./chapter2.assets/arch.png)')
+    expect(updated).toContain('src="./chapter2.assets/zoom.png"')
+  })
+
+  it('supports case-sensitive, whole-word, and regex search matching', () => {
+    const doc = markdownToDoc('Bank bank BANK rank [@Rixner00] [@Hur04]')
+
+    expect(
+      collectSearchMatches(doc, {
+        query: 'Bank',
+        caseSensitive: true,
+        wholeWord: true,
+        useRegex: false
+      }).length
+    ).toBe(1)
+
+    expect(
+      collectSearchMatches(doc, {
+        query: 'bank',
+        caseSensitive: false,
+        wholeWord: true,
+        useRegex: false
+      }).length
+    ).toBe(3)
+
+    expect(
+      collectSearchMatches(doc, {
+        query: '\\[@[A-Za-z0-9]+\\]',
+        caseSensitive: false,
+        wholeWord: false,
+        useRegex: true
+      }).length
+    ).toBe(2)
   })
 })

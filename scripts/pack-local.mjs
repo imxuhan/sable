@@ -1,11 +1,13 @@
 import { promises as fs } from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { rcedit } from 'rcedit'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
 const electronDist = path.join(rootDir, 'node_modules', 'electron', 'dist')
 const outDir = path.join(rootDir, 'out')
+const resourcesSrcDir = path.join(rootDir, 'resources')
 const targetDir = path.join(rootDir, 'release', 'Sable')
 
 async function pathExists(p) {
@@ -56,6 +58,10 @@ async function main() {
   await fs.mkdir(appDir, { recursive: true })
   await fs.cp(outDir, path.join(appDir, 'out'), { recursive: true })
 
+  if (await pathExists(resourcesSrcDir)) {
+    await fs.cp(resourcesSrcDir, path.join(appDir, 'resources'), { recursive: true })
+  }
+
   const rawPkg = JSON.parse(await fs.readFile(path.join(rootDir, 'package.json'), 'utf-8'))
   const minimalPkg = {
     name: rawPkg.name,
@@ -70,6 +76,31 @@ async function main() {
     JSON.stringify(minimalPkg, null, 2),
     'utf-8'
   )
+
+  if (process.platform === 'win32') {
+    const icoPath = path.join(resourcesSrcDir, 'icon.ico')
+    if (await pathExists(icoPath)) {
+      try {
+        await rcedit(expectedBinary, {
+          icon: icoPath,
+          'file-version': rawPkg.version,
+          'product-version': rawPkg.version,
+          'version-string': {
+            ProductName: 'Sable',
+            FileDescription: 'Sable Markdown Editor',
+            CompanyName: 'Sable',
+            InternalName: 'Sable.exe',
+            OriginalFilename: 'Sable.exe'
+          }
+        })
+        console.log('Embedded icon.ico and version info into Sable.exe')
+      } catch {
+        console.log(
+          'Skipped updating Sable.exe icon header (Sable.exe may currently be running; close it and re-run npm run pack to update EXE icon).'
+        )
+      }
+    }
+  }
 
   console.log(`Updated standalone build: ${expectedBinary}`)
 }

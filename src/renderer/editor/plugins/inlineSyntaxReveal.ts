@@ -69,6 +69,8 @@ const MARK_SYNTAX: Array<{
   { type: sableSchema.marks.strong, open: () => '**', close: () => '**' },
   { type: sableSchema.marks.em, open: () => '*', close: () => '*' },
   { type: sableSchema.marks.strike, open: () => '~~', close: () => '~~' },
+  { type: sableSchema.marks.sup, open: () => '^', close: () => '^' },
+  { type: sableSchema.marks.sub, open: () => '~', close: () => '~' },
   { type: sableSchema.marks.code, open: () => '`', close: () => '`' },
   {
     type: sableSchema.marks.link,
@@ -76,6 +78,8 @@ const MARK_SYNTAX: Array<{
     close: (mark) => `](${mark.attrs.href || ''})`
   }
 ]
+
+const CITATION_REGEX = /\[@[a-zA-Z0-9_:-]+(?:[^\]\n]*@[a-zA-Z0-9_:-]+)*\]/g
 
 export function createInlineSyntaxRevealPlugin(
   getEnabled: () => boolean,
@@ -89,21 +93,37 @@ export function createInlineSyntaxRevealPlugin(
           return DecorationSet.empty
         }
         const { selection } = state
+        const decos: Decoration[] = []
+
+        state.doc.descendants((node, pos) => {
+          if (node.type === sableSchema.nodes.code_block) return false
+          if (!node.isText || !node.text) return
+          if (node.marks.some((m) => m.type === sableSchema.marks.code)) return
+          CITATION_REGEX.lastIndex = 0
+          let m: RegExpExecArray | null
+          while ((m = CITATION_REGEX.exec(node.text)) !== null) {
+            decos.push(
+              Decoration.inline(pos + m.index, pos + m.index + m[0].length, {
+                class: 'sable-citation-pill'
+              })
+            )
+          }
+        })
+
         if (!selection.empty) {
-          return DecorationSet.empty
+          return decos.length > 0 ? DecorationSet.create(state.doc, decos) : DecorationSet.empty
         }
 
         const $from = selection.$from
         const parent = $from.parent
         if (!parent.isTextblock || parent.type === sableSchema.nodes.code_block) {
-          return DecorationSet.empty
+          return decos.length > 0 ? DecorationSet.create(state.doc, decos) : DecorationSet.empty
         }
 
         const parentStart = $from.start()
         const offset = $from.parentOffset
         const absCursor = parentStart + offset
         const activeMarks = state.storedMarks ?? $from.marks()
-        const decos: Decoration[] = []
 
         for (const spec of MARK_SYNTAX) {
           const span = findMarkSpanInParent(parent, parentStart, offset, spec.type)

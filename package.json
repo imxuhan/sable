@@ -1,7 +1,7 @@
 {
   "name": "sable",
   "productName": "Sable",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A crisp, local-first desktop Markdown editor with seamless live rendering.",
   "license": "MIT",
   "main": "./out/main/index.js",
@@ -59,6 +59,7 @@
     "electron": "^34.2.0",
     "electron-vite": "^3.0.0",
     "jsdom": "^26.0.0",
+    "rcedit": "^5.0.1",
     "tailwindcss": "^4.0.9",
     "typescript": "^5.7.3",
     "vite": "^6.2.0",

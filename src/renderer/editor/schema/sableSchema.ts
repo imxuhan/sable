@@ -249,6 +249,34 @@ const nodes: Record<string, NodeSpec> = {
     }
   },
 
+  footnote_def: {
+    attrs: {
+      id: { default: '1' }
+    },
+    content: 'block+',
+    group: 'block',
+    defining: true,
+    parseDOM: [
+      {
+        tag: 'div[data-type="footnote-def"]',
+        getAttrs(dom) {
+          return { id: (dom as HTMLElement).getAttribute('data-footnote-id') || '1' }
+        }
+      }
+    ],
+    toDOM(node): DOMOutputSpec {
+      return [
+        'div',
+        {
+          'data-type': 'footnote-def',
+          'data-footnote-id': node.attrs.id,
+          class: 'sable-footnote-def'
+        },
+        0
+      ]
+    }
+  },
+
   ...tableNodeSpecs,
 
   text: {
@@ -334,6 +362,35 @@ const nodes: Record<string, NodeSpec> = {
         `$${node.attrs.value}$`
       ]
     }
+  },
+
+  footnote_ref: {
+    inline: true,
+    group: 'inline',
+    atom: true,
+    selectable: true,
+    attrs: {
+      id: { default: '1' }
+    },
+    parseDOM: [
+      {
+        tag: 'sup[data-type="footnote-ref"]',
+        getAttrs(dom) {
+          return { id: (dom as HTMLElement).getAttribute('data-footnote-id') || '1' }
+        }
+      }
+    ],
+    toDOM(node): DOMOutputSpec {
+      return [
+        'sup',
+        {
+          'data-type': 'footnote-ref',
+          'data-footnote-id': node.attrs.id,
+          class: 'sable-footnote-ref'
+        },
+        `[${node.attrs.id}]`
+      ]
+    }
   }
 }
 
@@ -363,6 +420,22 @@ const marks: Record<string, MarkSpec> = {
     parseDOM: [{ tag: 's' }, { tag: 'del' }, { tag: 'strike' }],
     toDOM(): DOMOutputSpec {
       return ['del', 0]
+    }
+  },
+
+  sup: {
+    excludes: 'sub',
+    parseDOM: [{ tag: 'sup:not([data-type="footnote-ref"])' }],
+    toDOM(): DOMOutputSpec {
+      return ['sup', 0]
+    }
+  },
+
+  sub: {
+    excludes: 'sup',
+    parseDOM: [{ tag: 'sub' }],
+    toDOM(): DOMOutputSpec {
+      return ['sub', 0]
     }
   },
 

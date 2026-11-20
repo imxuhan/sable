@@ -370,8 +370,56 @@ pre {
 }
 
 .sable-search-match {
-  background: rgba(250, 204, 21, 0.45);
+  background: rgba(250, 204, 21, 0.42);
   border-radius: 2px;
+}
+
+.sable-search-match-active {
+  background: rgba(249, 115, 22, 0.68);
+  color: #ffffff;
+}
+
+.sable-citation-pill {
+  color: var(--sable-accent, #0969da);
+  background: rgba(9, 105, 218, 0.08);
+  border-radius: 4px;
+  padding: 0 3px;
+  font-size: 0.94em;
+}
+
+.sable-footnote-ref {
+  color: var(--sable-accent, #0969da);
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0 2px;
+}
+
+.sable-footnote-ref:hover {
+  text-decoration: underline;
+}
+
+.sable-footnote-def {
+  position: relative;
+  margin: 0.6em 0;
+  padding: 6px 12px 6px 42px;
+  border-left: 2px solid var(--sable-border, #d0d7de);
+  font-size: 0.9em;
+  color: var(--sable-muted, #656d76);
+}
+
+.sable-footnote-def::before {
+  content: "[" attr(data-footnote-id) "]";
+  position: absolute;
+  left: 10px;
+  top: 6px;
+  font-family: var(--sable-font-mono);
+  font-size: 0.88em;
+  font-weight: 600;
+  color: var(--sable-accent, #0969da);
+}
+
+.sable-footnote-def > p:last-child {
+  margin-bottom: 0;
 }
 
 .sable-source-editor-host {

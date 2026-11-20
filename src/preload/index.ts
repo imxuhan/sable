@@ -76,6 +76,11 @@ const api: SableBridgeAPI = {
 
   exportPdf: (options) => ipcRenderer.invoke('sable:export-pdf', options),
   exportHtml: (options) => ipcRenderer.invoke('sable:export-html', options),
+  exportPandoc: (options) => ipcRenderer.invoke('sable:export-pandoc', options),
+
+  confirmUnsavedClose: (docTitle) => ipcRenderer.invoke('sable:confirm-unsaved-close', docTitle),
+  registerWindowsIntegration: () => ipcRenderer.invoke('sable:register-win-integration'),
+  unregisterWindowsIntegration: () => ipcRenderer.invoke('sable:unregister-win-integration'),
 
   syncMenuState: (state: MenuSyncState) => ipcRenderer.send('sable:sync-menu-state', state),
   setWindowTitle: (title: string) => ipcRenderer.send('sable:set-window-title', title),

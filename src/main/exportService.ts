@@ -1,7 +1,11 @@
 import { app, BrowserWindow, dialog } from 'electron'
+import { execFile } from 'child_process'
 import { promises as fs } from 'fs'
 import path from 'path'
+import { promisify } from 'util'
 import type { PdfMargins, PdfPageSize } from '@shared/types'
+
+const execFileAsync = promisify(execFile)
 
 const MIME_BY_EXT: Record<string, string> = {
   '.png': 'image/png',
@@ -183,4 +187,87 @@ export async function exportHtmlDocument(
   )
   await fs.writeFile(saveRes.filePath, finalHtml, 'utf-8')
   return path.resolve(saveRes.filePath)
+}
+
+export async function exportPandocDocument(
+  options: {
+    markdown: string
+    format: 'docx' | 'latex'
+    defaultPath?: string | null
+    docPath?: string | null
+    bibPath?: string
+  },
+  parentWin?: BrowserWindow
+): Promise<{ ok: boolean; filePath?: string; error?: string }> {
+  try {
+    await execFileAsync('pandoc', ['--version'], { windowsHide: true })
+  } catch {
+    return {
+      ok: false,
+      error: '未检测到本机安装的 pandoc 命令，请先安装 Pandoc 并加入系统 PATH'
+    }
+  }
+
+  const isDocx = options.format === 'docx'
+  const ext = isDocx ? 'docx' : 'tex'
+  const suggestedName = options.defaultPath
+    ? options.defaultPath.replace(/\.(md|markdown|mdown|mkd|txt)$/i, `.${ext}`)
+    : `Untitled.${ext}`
+
+  const saveDialogOpts = {
+    defaultPath: suggestedName,
+    filters: [
+      isDocx
+        ? { name: 'Word Document', extensions: ['docx'] }
+        : { name: 'LaTeX Source', extensions: ['tex'] }
+    ]
+  }
+
+  const saveRes = parentWin
+    ? await dialog.showSaveDialog(parentWin, saveDialogOpts)
+    : await dialog.showSaveDialog(saveDialogOpts)
+
+  if (saveRes.canceled || !saveRes.filePath) {
+    return { ok: false }
+  }
+
+  const tempMd = path.join(
+    app.getPath('temp'),
+    `sable-pandoc-${process.pid}-${Date.now()}.md`
+  )
+  await fs.writeFile(tempMd, options.markdown, 'utf-8')
+
+  const docDir = options.docPath ? path.dirname(path.resolve(options.docPath)) : process.cwd()
+  const args = [
+    tempMd,
+    '--from=markdown+tex_math_dollars+raw_html+footnotes+pipe_tables+strikeout+task_lists+superscript+subscript',
+    `--to=${isDocx ? 'docx' : 'latex'}`,
+    `--resource-path=${docDir}`,
+    '-o',
+    saveRes.filePath
+  ]
+
+  if (!isDocx) {
+    args.push('--standalone')
+  }
+
+  const trimmedBib = options.bibPath?.trim()
+  if (trimmedBib) {
+    const resolvedBib = path.isAbsolute(trimmedBib)
+      ? trimmedBib
+      : path.resolve(docDir, trimmedBib)
+    args.push('--citeproc', `--bibliography=${resolvedBib}`)
+  }
+
+  try {
+    await execFileAsync('pandoc', args, { cwd: docDir, windowsHide: true })
+    return { ok: true, filePath: path.resolve(saveRes.filePath) }
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message.split('\n')[0] : 'Pandoc 转换出错'
+    }
+  } finally {
+    await fs.unlink(tempMd).catch(() => undefined)
+  }
 }

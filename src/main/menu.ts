@@ -140,6 +140,14 @@ export function buildAndApplyApplicationMenu(
           accelerator: 'CmdOrCtrl+Alt+H',
           click: (): void => dispatchToFocusedWindow('file:export-html')
         },
+        {
+          label: '导出为 Word (.docx)...',
+          click: (): void => dispatchToFocusedWindow('file:export-docx')
+        },
+        {
+          label: '导出为 LaTeX (.tex)...',
+          click: (): void => dispatchToFocusedWindow('file:export-latex')
+        },
         { type: 'separator' },
         {
           label: '偏好设置...',
@@ -309,6 +317,14 @@ export function buildAndApplyApplicationMenu(
           click: (): void => dispatchToFocusedWindow('format:strike')
         },
         {
+          label: '上标',
+          click: (): void => dispatchToFocusedWindow('format:sup')
+        },
+        {
+          label: '下标',
+          click: (): void => dispatchToFocusedWindow('format:sub')
+        },
+        {
           label: '行内代码',
           accelerator: 'CmdOrCtrl+`',
           click: (): void => dispatchToFocusedWindow('format:code')
@@ -316,6 +332,10 @@ export function buildAndApplyApplicationMenu(
         {
           label: '行内公式',
           click: (): void => dispatchToFocusedWindow('format:math-inline')
+        },
+        {
+          label: '插入脚注',
+          click: (): void => dispatchToFocusedWindow('format:footnote')
         },
         { type: 'separator' },
         {

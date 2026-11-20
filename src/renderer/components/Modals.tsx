@@ -3,6 +3,7 @@ import { X, FolderOpen } from 'lucide-react'
 import { BUILTIN_THEMES } from '@shared/defaults'
 import type { ImageSaveAction, PdfMargins, PdfPageSize } from '@shared/types'
 import { useEditorStore } from '../stores/useEditorStore'
+import sableLogoUrl from '../assets/logo.png'
 
 export const PreferencesModal: React.FC<{ isDark: boolean }> = ({ isDark }) => {
   const {
@@ -10,7 +11,8 @@ export const PreferencesModal: React.FC<{ isDark: boolean }> = ({ isDark }) => {
     setShowPreferencesModal,
     preferences,
     updatePreferences,
-    customThemes
+    customThemes,
+    flashToast
   } = useEditorStore()
 
   if (!showPreferencesModal) return null
@@ -258,6 +260,52 @@ export const PreferencesModal: React.FC<{ isDark: boolean }> = ({ isDark }) => {
                 className="h-4 w-4 accent-blue-600"
               />
             </label>
+
+            <div className="flex items-center justify-between gap-4">
+              <span>Pandoc 参考文献库 (.bib) 路径</span>
+              <input
+                type="text"
+                value={preferences.pandocBibPath || ''}
+                onChange={(e) => updatePreferences({ pandocBibPath: e.target.value })}
+                placeholder="可选，例如 ./refs.bib"
+                className="w-56 rounded-md border border-neutral-300 bg-transparent px-2 py-1 outline-none dark:border-neutral-600"
+              />
+            </div>
+          </section>
+
+          <section className="space-y-3 border-t border-black/10 pt-4 dark:border-white/10">
+            <h3 className="text-xs font-semibold tracking-wide uppercase opacity-60">
+              系统集成 (Windows)
+            </h3>
+            <div className="flex items-center justify-between gap-3">
+              <span className="opacity-80">将 Sable 添加至资源管理器右键菜单并注册 .md 文件图标</span>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!window.sable) return
+                    void window.sable.registerWindowsIntegration().then((res) => {
+                      flashToast(res.message)
+                    })
+                  }}
+                  className="rounded-md bg-neutral-900 px-2.5 py-1 text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900"
+                >
+                  一键注册
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!window.sable) return
+                    void window.sable.unregisterWindowsIntegration().then((res) => {
+                      flashToast(res.message)
+                    })
+                  }}
+                  className="rounded-md border border-neutral-300 px-2.5 py-1 hover:bg-black/5 dark:border-neutral-600 dark:hover:bg-white/5"
+                >
+                  取消注册
+                </button>
+              </div>
+            </div>
           </section>
         </div>
       </div>
@@ -339,11 +387,13 @@ export const AboutModal: React.FC<{ isDark: boolean }> = ({ isDark }) => {
             : 'border-neutral-200 bg-white text-neutral-800'
         }`}
       >
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-900 font-serif text-xl font-bold text-white dark:bg-neutral-100 dark:text-neutral-900">
-          S
-        </div>
+        <img
+          src={sableLogoUrl}
+          alt="Sable"
+          className="mx-auto mb-3 h-14 w-14 rounded-2xl object-contain shadow-sm"
+        />
         <h2 className="text-lg font-semibold">Sable</h2>
-        <p className="mt-1 text-xs opacity-60">Version 0.1.0 · MIT License</p>
+        <p className="mt-1 text-xs opacity-60">Version 0.2.0 · MIT License</p>
         <p className="mt-3 text-xs leading-relaxed opacity-80">
           专注本地文档与纯粹即时渲染手感的桌面端 Markdown 编辑器。
         </p>

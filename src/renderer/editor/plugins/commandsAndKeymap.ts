@@ -347,8 +347,32 @@ export function toggleOrInsertBlock(
       return toggleMark(marks.em)(state, dispatch)
     case 'format:strike':
       return toggleMark(marks.strike)(state, dispatch)
+    case 'format:sup':
+      return toggleMark(marks.sup)(state, dispatch)
+    case 'format:sub':
+      return toggleMark(marks.sub)(state, dispatch)
     case 'format:code':
       return toggleMark(marks.code)(state, dispatch)
+
+    case 'format:footnote': {
+      let maxNum = 0
+      state.doc.descendants((n) => {
+        if (n.type === nodes.footnote_ref || n.type === nodes.footnote_def) {
+          const parsed = Number(n.attrs.id)
+          if (Number.isFinite(parsed) && parsed > maxNum) maxNum = parsed
+        }
+      })
+      const nextId = String(maxNum + 1)
+      const refNode = nodes.footnote_ref.create({ id: nextId })
+      let tr = state.tr.replaceSelectionWith(refNode)
+      const endPos = tr.doc.content.size
+      const defPara = nodes.paragraph.create()
+      const defNode = nodes.footnote_def.create({ id: nextId }, [defPara])
+      tr = tr.insert(endPos, defNode)
+      tr = tr.setSelection(TextSelection.create(tr.doc, endPos + 2))
+      dispatch(tr.scrollIntoView())
+      return true
+    }
 
     case 'format:math-inline': {
       const selectedText = state.doc.textBetween(state.selection.from, state.selection.to, ' ')

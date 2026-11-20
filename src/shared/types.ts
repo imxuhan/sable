@@ -27,6 +27,15 @@ export interface SablePreferences {
   contentWidthPercent: number
   zoomPercent: number
   showHeadingDivider: boolean
+  pandocBibPath: string
+}
+
+export interface WindowBounds {
+  x?: number
+  y?: number
+  width: number
+  height: number
+  isMaximized: boolean
 }
 
 export interface FileTreeNode {
@@ -67,6 +76,7 @@ export interface PersistedAppState {
   recentFiles: string[]
   recentWorkspace: string | null
   drafts: DraftData[]
+  windowBounds?: WindowBounds
 }
 
 export interface MenuSyncState {
@@ -92,6 +102,8 @@ export type MenuCommand =
   | 'file:save-as'
   | 'file:export-pdf'
   | 'file:export-html'
+  | 'file:export-docx'
+  | 'file:export-latex'
   | 'file:preferences'
   | 'edit:undo'
   | 'edit:redo'
@@ -120,8 +132,11 @@ export type MenuCommand =
   | 'format:strong'
   | 'format:em'
   | 'format:strike'
+  | 'format:sup'
+  | 'format:sub'
   | 'format:code'
   | 'format:math-inline'
+  | 'format:footnote'
   | 'format:link'
   | 'format:image'
   | 'format:clear'
@@ -149,7 +164,10 @@ export interface SableBridgeAPI {
   writeFile: (filePath: string, content: string) => Promise<{ mtimeMs: number }>
   saveFileAs: (content: string, defaultPath?: string | null) => Promise<LoadedDocument | null>
   createEntry: (parentDir: string, name: string, isDirectory: boolean) => Promise<string>
-  renameEntry: (oldPath: string, newPath: string) => Promise<string>
+  renameEntry: (
+    oldPath: string,
+    newPath: string
+  ) => Promise<{ newPath: string; updatedContent: string | null }>
   deleteEntry: (targetPath: string) => Promise<void>
   readWorkspaceTree: (rootDir: string) => Promise<FileTreeNode[]>
   searchWorkspace: (rootDir: string, query: string) => Promise<WorkspaceSearchResult[]>
@@ -197,6 +215,17 @@ export interface SableBridgeAPI {
     docPath?: string | null
     embedImages: boolean
   }) => Promise<string | null>
+  exportPandoc: (options: {
+    markdown: string
+    format: 'docx' | 'latex'
+    defaultPath?: string | null
+    docPath?: string | null
+    bibPath?: string
+  }) => Promise<{ ok: boolean; filePath?: string; error?: string }>
+
+  confirmUnsavedClose: (docTitle: string) => Promise<'save' | 'discard' | 'cancel'>
+  registerWindowsIntegration: () => Promise<{ ok: boolean; message: string }>
+  unregisterWindowsIntegration: () => Promise<{ ok: boolean; message: string }>
 
   syncMenuState: (state: MenuSyncState) => void
   setWindowTitle: (title: string) => void

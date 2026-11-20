@@ -32,6 +32,7 @@ function markInputRule(
         !fullMatch.startsWith('**') &&
         !fullMatch.startsWith('__') &&
         !fullMatch.startsWith('~~') &&
+        !fullMatch.startsWith('^') &&
         !fullMatch.startsWith('`') &&
         !fullMatch.startsWith('[')
       ) {
@@ -171,7 +172,32 @@ export function createMarkdownInputRules(): Plugin {
   const strongUnderRule = markInputRule(/__([^_]+)__$/, sableSchema.marks.strong)
   const emStarRule = markInputRule(/(?:^|[^*])\*([^*]+)\*$/, sableSchema.marks.em)
   const strikeRule = markInputRule(/~~([^~]+)~~$/, sableSchema.marks.strike)
+  const supRule = markInputRule(/\^([^\^\s]+)\^$/, sableSchema.marks.sup)
+  const subRule = markInputRule(/(?:^|[^~])~([^~\s]+)~$/, sableSchema.marks.sub)
   const inlineCodeRule = markInputRule(/`([^`]+)`$/, sableSchema.marks.code)
+
+  const footnoteDefRule = new InputRule(/^\[\^([^\]]+)\]:\s$/, (state, match, start) => {
+    const fnId = match[1].trim()
+    if (!fnId) return null
+    const $start = state.doc.resolve(start)
+    const from = $start.before()
+    const to = $start.after()
+    const para = sableSchema.nodes.paragraph.create()
+    const defNode = sableSchema.nodes.footnote_def.create({ id: fnId }, [para])
+    const tr = state.tr.replaceWith(from, to, defNode)
+    tr.setSelection(TextSelection.create(tr.doc, from + 2))
+    return tr
+  })
+
+  const footnoteRefRule = new InputRule(/\[\^([^\]]+)\]$/, (state, match, start, end) => {
+    const fnId = match[1].trim()
+    if (!fnId) return null
+    return state.tr.replaceWith(
+      start,
+      end,
+      sableSchema.nodes.footnote_ref.create({ id: fnId })
+    )
+  })
 
   const linkRule = new InputRule(/\[([^\]]+)\]\(([^)]+)\)$/, (state, match, start, end) => {
     const text = match[1]
@@ -216,12 +242,16 @@ export function createMarkdownInputRules(): Plugin {
       mathBlockQuadDollarRule,
       hrRule,
       tocRule,
+      footnoteDefRule,
+      footnoteRefRule,
       imageRule,
       linkRule,
       strongStarRule,
       strongUnderRule,
       emStarRule,
       strikeRule,
+      supRule,
+      subRule,
       inlineCodeRule,
       inlineMathRule
     ]

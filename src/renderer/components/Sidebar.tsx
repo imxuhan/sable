@@ -46,7 +46,13 @@ const TreeItem: React.FC<{
     if (!trimmed || trimmed === node.name || !window.sable) return
     const sep = node.path.includes('\\') ? '\\' : '/'
     const parent = node.path.slice(0, node.path.lastIndexOf(sep))
-    await window.sable.renameEntry(node.path, `${parent}${sep}${trimmed}`)
+    const renamed = await window.sable.renameEntry(node.path, `${parent}${sep}${trimmed}`)
+    useEditorStore
+      .getState()
+      .applyEntryRenamed(node.path, renamed.newPath, renamed.updatedContent)
+    if (renamed.updatedContent !== null) {
+      useEditorStore.getState().flashToast('已重命名文档并同步更新 .assets 图片路径')
+    }
     onRefresh()
   }
 

@@ -146,11 +146,75 @@ export async function createWorkspaceEntry(
   return finalPath
 }
 
-export async function renameWorkspaceEntry(oldPath: string, newPath: string): Promise<string> {
+export function rewriteRenamedAssetLinks(
+  markdown: string,
+  oldStem: string,
+  newStem: string
+): string {
+  if (!oldStem || !newStem || oldStem === newStem) return markdown
+  const escapeRegex = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+  const variants = [
+    [oldStem, newStem],
+    [encodeURIComponent(oldStem), encodeURIComponent(newStem)]
+  ]
+
+  let result = markdown
+  for (const [fromStem, toStem] of variants) {
+    if (!fromStem || fromStem === toStem) continue
+    const pattern = new RegExp(
+      `(\\.\\/|["'(\\[\\s])${escapeRegex(fromStem)}\\.assets(\\/)`,
+      'g'
+    )
+    result = result.replace(pattern, `$1${toStem}.assets$2`)
+
+    const lineStartPattern = new RegExp(`^${escapeRegex(fromStem)}\\.assets(\\/)`, 'gm')
+    result = result.replace(lineStartPattern, `${toStem}.assets$1`)
+  }
+  return result
+}
+
+export async function renameWorkspaceEntry(
+  oldPath: string,
+  newPath: string
+): Promise<{ newPath: string; updatedContent: string | null }> {
   const resolvedOld = path.resolve(oldPath)
   const resolvedNew = path.resolve(newPath)
   await fs.rename(resolvedOld, resolvedNew)
-  return resolvedNew
+
+  const oldExt = path.extname(resolvedOld).toLowerCase()
+  const newExt = path.extname(resolvedNew).toLowerCase()
+  const oldDir = path.dirname(resolvedOld)
+  const newDir = path.dirname(resolvedNew)
+
+  if (MARKDOWN_EXTENSIONS.has(oldExt) && MARKDOWN_EXTENSIONS.has(newExt) && oldDir === newDir) {
+    const oldStem = path.basename(resolvedOld, path.extname(resolvedOld))
+    const newStem = path.basename(resolvedNew, path.extname(resolvedNew))
+    if (oldStem !== newStem) {
+      const oldAssetsDir = path.join(oldDir, `${oldStem}.assets`)
+      const newAssetsDir = path.join(newDir, `${newStem}.assets`)
+      try {
+        const stat = await fs.stat(oldAssetsDir)
+        const targetExists = await fs
+          .access(newAssetsDir)
+          .then(() => true)
+          .catch(() => false)
+        if (stat.isDirectory() && !targetExists) {
+          await fs.rename(oldAssetsDir, newAssetsDir)
+          const rawMd = (await fs.readFile(resolvedNew, 'utf-8')).replace(/\r\n/g, '\n')
+          const updatedMd = rewriteRenamedAssetLinks(rawMd, oldStem, newStem)
+          if (updatedMd !== rawMd) {
+            await writeFileAtomic(resolvedNew, updatedMd)
+          }
+          return { newPath: resolvedNew, updatedContent: updatedMd }
+        }
+      } catch {
+        // No companion .assets folder to rename
+      }
+    }
+  }
+
+  return { newPath: resolvedNew, updatedContent: null }
 }
 
 export async function deleteWorkspaceEntry(targetPath: string): Promise<void> {

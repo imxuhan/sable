@@ -420,6 +420,56 @@ export const App: React.FC = () => {
     [combinedThemeCss]
   )
 
+  const handlePandocExport = useCallback(async (format: 'docx' | 'latex') => {
+    if (!window.sable) return
+    const state = useEditorStore.getState()
+    const curTab = state.getActiveTab()
+    state.flashToast(format === 'docx' ? '正在调用 Pandoc 导出 Word...' : '正在调用 Pandoc 导出 LaTeX...')
+    const res = await window.sable.exportPandoc({
+      markdown: curTab.content,
+      format,
+      defaultPath: curTab.filePath || curTab.title,
+      docPath: curTab.filePath,
+      bibPath: state.preferences.pandocBibPath
+    })
+    if (res.ok) {
+      state.flashToast(format === 'docx' ? '已成功导出 Word 文档' : '已成功导出 LaTeX 源码')
+    } else if (res.error) {
+      window.alert(res.error)
+    }
+  }, [])
+
+  const handleWindowCloseRequest = useCallback(async () => {
+    if (!window.sable) return
+    const state = useEditorStore.getState()
+    const cur = state.getActiveTab()
+    if (state.preferences.autoSave && cur.filePath && cur.isDirty) {
+      const { mtimeMs } = await window.sable.writeFile(cur.filePath, cur.content)
+      state.markTabSaved(cur.id, cur.filePath, cur.content, mtimeMs)
+    }
+
+    const unsavedDraft = state.tabs.find(
+      (t) => !t.filePath && t.isDirty && t.content.trim().length > 0
+    )
+    if (unsavedDraft) {
+      const choice = await window.sable.confirmUnsavedClose(unsavedDraft.title)
+      if (choice === 'cancel') return
+      if (choice === 'save') {
+        state.setActiveTab(unsavedDraft.id)
+        const saved = await saveTabNow(true)
+        if (!saved) return
+      } else if (choice === 'discard') {
+        await window.sable.saveDrafts(
+          state.tabs
+            .filter((t) => t.id !== unsavedDraft.id && !t.filePath && t.content.trim().length > 0)
+            .map((t) => ({ id: t.id, title: t.title, content: t.content, updatedAt: Date.now() }))
+        )
+      }
+    }
+
+    await window.sable.windowClose()
+  }, [saveTabNow])
+
   const handleCloseTabRequest = useCallback(
     async (tabId: string) => {
       const target = useEditorStore.getState().tabs.find((t) => t.id === tabId)
@@ -481,6 +531,12 @@ export const App: React.FC = () => {
           break
         case 'file:export-html':
           void handleExport('html')
+          break
+        case 'file:export-docx':
+          void handlePandocExport('docx')
+          break
+        case 'file:export-latex':
+          void handlePandocExport('latex')
           break
         case 'file:preferences':
           state.setShowPreferencesModal(true)
@@ -607,7 +663,11 @@ export const App: React.FC = () => {
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden">
-      <TitleMenuBar isDark={darkTheme} onCommand={executeMenuCommand} />
+      <TitleMenuBar
+        isDark={darkTheme}
+        onCommand={executeMenuCommand}
+        onRequestCloseWindow={() => void handleWindowCloseRequest()}
+      />
 
       {preferences.showTabBar && (
         <TabBar isDark={darkTheme} onCloseTabRequest={(id) => void handleCloseTabRequest(id)} />

@@ -144,4 +144,18 @@ describe('Markdown <-> ProseMirror Converter', () => {
 
     expect(docToMarkdown(doc)).toBe(input)
   })
+
+  it('round-trips academic footnotes, superscripts, and subscripts without colliding with strikethrough', () => {
+    const input = [
+      '化学式 H~2~O 与复杂度 O(n^2^) 以及删除线 ~~废弃方案~~ 和文献脚注[^1]。',
+      '',
+      '[^1]: 这是第一条脚注的详细出处说明。'
+    ].join('\n')
+
+    const doc = markdownToDoc(input)
+    expect(doc.child(1).type).toBe(sableSchema.nodes.footnote_def)
+    expect(doc.child(1).attrs.id).toBe('1')
+
+    expect(docToMarkdown(doc)).toBe(input)
+  })
 })

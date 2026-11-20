@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, net, protocol, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, screen, shell } from 'electron'
 import { promises as fs } from 'fs'
 import path from 'path'
 import { pathToFileURL } from 'url'
@@ -8,14 +8,16 @@ import type {
   MenuSyncState,
   PdfMargins,
   PdfPageSize,
-  SablePreferences
+  SablePreferences,
+  WindowBounds
 } from '@shared/types'
 import {
   importExternalImageFile,
   pickAndImportImageDialog,
   saveImageFromClipboard
 } from './assetService'
-import { exportHtmlDocument, exportPdfDocument } from './exportService'
+import { exportHtmlDocument, exportPandocDocument, exportPdfDocument } from './exportService'
+import { registerWindowsShellIntegration, unregisterWindowsShellIntegration } from './shellIntegration'
 import {
   createWorkspaceEntry,
   deleteWorkspaceEntry,
@@ -38,7 +40,8 @@ import {
   pushRecentFile,
   updateDrafts,
   updatePreferences,
-  updateRecentWorkspace
+  updateRecentWorkspace,
+  updateWindowBounds
 } from './stateService'
 import {
   disposeWindowWatchers,
@@ -71,17 +74,44 @@ function extractMarkdownArg(argv: string[]): string | null {
 const isSmokeTest = process.argv.includes('--smoke-test')
 let pendingLaunchFile: string | null = extractMarkdownArg(process.argv)
 
-function createEditorWindow(initialFilePath?: string | null): BrowserWindow {
+function resolveWindowIconPath(): string | undefined {
+  const ext = process.platform === 'win32' ? 'icon.ico' : 'icon.png'
+  const candidate = path.join(__dirname, '../../resources', ext)
+  return candidate
+}
+
+function isBoundsVisibleOnDisplays(bounds: WindowBounds): boolean {
+  if (bounds.x === undefined || bounds.y === undefined) return false
+  const displays = screen.getAllDisplays()
+  return displays.some((d) => {
+    const area = d.workArea
+    return (
+      bounds.x! + bounds.width > area.x + 80 &&
+      bounds.x! < area.x + area.width - 80 &&
+      bounds.y! + bounds.height > area.y + 60 &&
+      bounds.y! < area.y + area.height - 60
+    )
+  })
+}
+
+function createEditorWindow(
+  initialFilePath?: string | null,
+  savedBounds?: WindowBounds
+): BrowserWindow {
   if (initialFilePath) {
     pendingLaunchFile = initialFilePath
   }
   const isMac = process.platform === 'darwin'
+  const useSavedPos = savedBounds && isBoundsVisibleOnDisplays(savedBounds)
+
   const win = new BrowserWindow({
-    width: 1340,
-    height: 860,
+    width: savedBounds?.width || 1340,
+    height: savedBounds?.height || 860,
+    ...(useSavedPos ? { x: savedBounds.x, y: savedBounds.y } : {}),
     minWidth: 720,
     minHeight: 480,
     title: 'Sable',
+    icon: resolveWindowIconPath(),
     frame: isMac,
     thickFrame: true,
     autoHideMenuBar: !isMac,
@@ -96,13 +126,35 @@ function createEditorWindow(initialFilePath?: string | null): BrowserWindow {
     }
   })
 
+  let boundsSaveTimer: NodeJS.Timeout | null = null
+  const scheduleBoundsSave = (): void => {
+    if (boundsSaveTimer) clearTimeout(boundsSaveTimer)
+    boundsSaveTimer = setTimeout(() => {
+      if (win.isDestroyed()) return
+      const isMax = win.isMaximized()
+      const normalBounds = win.getNormalBounds()
+      void updateWindowBounds({
+        x: normalBounds.x,
+        y: normalBounds.y,
+        width: normalBounds.width,
+        height: normalBounds.height,
+        isMaximized: isMax
+      })
+    }, 350)
+  }
+
+  win.on('resize', scheduleBoundsSave)
+  win.on('move', scheduleBoundsSave)
+
   win.on('maximize', () => {
+    scheduleBoundsSave()
     if (!win.isDestroyed()) {
       win.webContents.send('sable:window-maximized', true)
     }
   })
 
   win.on('unmaximize', () => {
+    scheduleBoundsSave()
     if (!win.isDestroyed()) {
       win.webContents.send('sable:window-maximized', false)
     }
@@ -110,6 +162,9 @@ function createEditorWindow(initialFilePath?: string | null): BrowserWindow {
 
   win.once('ready-to-show', () => {
     if (!isSmokeTest) {
+      if (savedBounds?.isMaximized) {
+        win.maximize()
+      }
       win.show()
     }
   })
@@ -296,6 +351,50 @@ function registerIpcHandlers(): void {
     }
   )
 
+  ipcMain.handle(
+    'sable:export-pandoc',
+    async (
+      event,
+      options: {
+        markdown: string
+        format: 'docx' | 'latex'
+        defaultPath?: string | null
+        docPath?: string | null
+        bibPath?: string
+      }
+    ) => {
+      const win = BrowserWindow.fromWebContents(event.sender) ?? undefined
+      return exportPandocDocument(options, win)
+    }
+  )
+
+  ipcMain.handle('sable:confirm-unsaved-close', async (event, docTitle: string) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const msgOpts = {
+      type: 'question' as const,
+      buttons: ['保存', '不保存直接关闭', '取消'],
+      defaultId: 0,
+      cancelId: 2,
+      title: 'Sable',
+      message: `草稿 "${docTitle}" 尚未保存到本地磁盘`,
+      detail: '关闭前是否先将其保存为本地 Markdown 文件？'
+    }
+    const res = win
+      ? await dialog.showMessageBox(win, msgOpts)
+      : await dialog.showMessageBox(msgOpts)
+    if (res.response === 0) return 'save'
+    if (res.response === 1) return 'discard'
+    return 'cancel'
+  })
+
+  ipcMain.handle('sable:register-win-integration', async () => {
+    return registerWindowsShellIntegration()
+  })
+
+  ipcMain.handle('sable:unregister-win-integration', async () => {
+    return unregisterWindowsShellIntegration()
+  })
+
   ipcMain.on('sable:sync-menu-state', (_event, state: MenuSyncState) => {
     buildAndApplyApplicationMenu(state, () => createEditorWindow())
   })
@@ -402,7 +501,7 @@ if (!gotSingleInstanceLock) {
     )
 
     const startupFile = extractMarkdownArg(process.argv)
-    const mainWin = createEditorWindow(startupFile)
+    const mainWin = createEditorWindow(startupFile, initialState.windowBounds)
 
     if (isSmokeTest) {
       mainWin.webContents.once('did-finish-load', async () => {

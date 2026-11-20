@@ -23,7 +23,8 @@ export const DEFAULT_PREFERENCES: SablePreferences = {
   codeFontFamily: 'default',
   contentWidthPercent: 90,
   zoomPercent: 118,
-  showHeadingDivider: false
+  showHeadingDivider: false,
+  pandocBibPath: ''
 }
 
 export const BUILTIN_THEMES = [

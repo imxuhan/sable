@@ -1,76 +1,37 @@
-# Sable
+<p align="center">
+  <img src="./resources/icon.png" width="88" height="88" alt="Sable" />
+</p>
 
-Sable is a local-first desktop Markdown editor built with Electron, React, ProseMirror, and CodeMirror 6.
+<h1 align="center">Sable</h1>
 
-I started this project to have a clean daily Markdown editor that behaves the way I actually write: block syntax (`#`, `>`, lists, tables, code fences) renders in place without shifting lines around when the cursor moves over them, inline marks (`**bold**`, `` `code` ``, `[link](url)`) reveal their raw delimiters only while the cursor is inside them, and switching to raw Markdown source (`Ctrl+/`) is instant.
+<p align="center">基于 Electron、ProseMirror 与 CodeMirror 6 编写的本地桌面 Markdown 编辑器。</p>
 
-## Download
+做这个项目的初衷是给自己日常写文档和论文准备一个干净的工具。编辑区采用即时渲染视图，块级语法渲染后不会因为光标移入而跳回源码，行内标记只在光标进入词内时展开，按 `Ctrl + /` 可以随时切换到 `Source Code Mode` 查看纯文本源码。
 
-Prebuilt archives are available on the [Releases](https://github.com/imxuhan/sable/releases) page.
+## 下载使用
 
-On Windows, extract `Sable-*-win32-x64.zip` and run `Sable.exe`. You can associate `.md` files with `Sable.exe` in Explorer so double-clicking opens documents directly in an existing or new window.
+可以直接在 [Releases](https://github.com/imxuhan/sable/releases) 页面下载打包好的压缩包。
 
-## What It Supports
+Windows 下解压后直接运行 `Sable.exe`。可以在偏好设置里一键注册系统右键菜单和 `.md` 文件图标，也可以在资源管理器里把 `.md` 默认打开方式设为 `Sable.exe`。
 
-- **Hybrid live / source editing**: ProseMirror handles the rendered document view (with IME composition guards so CJK input does not drop characters); CodeMirror 6 handles `Source Code Mode` and embedded code blocks with syntax highlighting.
-- **Markdown & extensions**: CommonMark + GFM tables, task lists (`- [x]`), strikethrough, `YAML` front matter, auto-updating `[TOC]`, inline and display math via KaTeX (`$...$`, `$$...$$`), and Mermaid diagrams.
-- **Line-break preservation**: Pressing `Enter` starts a new paragraph (`\n\n`); `Shift+Enter` inserts a soft break. Single line breaks in existing `.md` files are preserved visually and round-trip without injecting trailing backslashes.
-- **Local image workflow**: Pasting screenshots from the clipboard or dragging images into the editor copies them into `./<docname>.assets/` (configurable in Preferences) using relative paths. Right-click an image for zoom presets (`25%`, `50%`, `67%`, `100%`) or drag its corner handle to resize; custom sizes serialize as `<img>` tags.
-- **Workspace & navigation**: Resizable `Outline` and `File Tree` sidebar with full-text search, atomic auto-save with `chokidar` external change detection, crash draft recovery, and an optional top multi-tab bar.
-- **Themes & export**: Built on `--sable-*` CSS custom properties with four built-in themes (`GitHub`, `Newsprint`, `Night`, `Minimal`), plus hot-reloadable user `.css` files. Supports `Focus Mode` (`F8`), `Typewriter Mode` (`F9`), vector PDF export via Chromium `printToPDF`, and standalone single-file HTML export.
+## 功能概览
 
-## Keyboard Shortcuts
+- **语法与学术扩展**。支持 `GFM` 表格、任务列表、`YAML Front Matter`、`[TOC]` 自动目录、`KaTeX` 数学公式、`Mermaid` 图表，以及脚注 `[^1]`、上标 `^2^`、下标 `H~2~O` 与 `[@cite]` 文献引用高亮。
+- **本地图片与目录联动**。截图粘贴或拖入外部图片时自动归档至同级 `.assets` 目录并写入相对路径，支持右键比例缩放与拖拽调整宽度。在侧边栏重命名文档时会自动同步修改 `.assets` 目录名与正文图片链接。
+- **搜索与视图辅助**。支持 `Outline` 大纲跳转、`File Tree` 全文检索、实时自动保存、窗口尺寸位置记忆、`Ctrl` 加滚轮无级缩放、`Focus Mode`、`Typewriter Mode`，以及带区分大小写、整词匹配、正则表达式的查找与全部替换。
+- **主题与多格式导出**。内置 `GitHub`、`Newsprint`、`Night`、`Minimal` 四套基于 `--sable-*` 变量的主题并支持加载本地 `.css` 文件。支持直接导出矢量 `PDF` 与单文件 `HTML`，本机安装 `Pandoc` 后可配合 `.bib` 导出 `.docx` 与 `.tex`。
 
-| Action | Shortcut |
-| :--- | :--- |
-| New document / New window | `Ctrl + N` / `Ctrl + Shift + N` |
-| Open file / Open folder | `Ctrl + O` / `Ctrl + Shift + O` |
-| Save / Save as | `Ctrl + S` / `Ctrl + Shift + S` |
-| Toggle Source Code Mode | `Ctrl + /` |
-| Toggle Sidebar (`Outline` / `Files`) | `Ctrl + Shift + L` |
-| Focus Mode / Typewriter Mode | `F8` / `F9` |
-| Zoom interface in / out | `Ctrl + Mouse Wheel` |
-| Headings 1–6 / Paragraph | `Ctrl + 1..6` / `Ctrl + 0` |
-| Bold / Italic / Inline code / Link | `Ctrl + B` / `Ctrl + I` / `Ctrl + \`` / `Ctrl + K` |
-| Insert table / Code block / Math block | `Ctrl + T` / `Ctrl + Shift + K` / `Ctrl + Shift + M` |
-| Preferences | `Ctrl + ,` |
+## 本地开发
 
-## Development
-
-Requires Node.js 20+.
+需要 Node.js 20 及以上版本。
 
 ```bash
 npm install
-
-# Start in development mode with HMR
-npm run dev
-
-# Typecheck and run unit tests
-npm run typecheck
-npm test
-
-# Build production bundles and package standalone app into release/Sable
-npm run pack
+npm run dev      # 启动开发窗口
+npm test         # 运行单元测试
+npm run pack     # 构建并生成 release/Sable 独立可执行程序
 ```
 
-## Custom Themes
-
-Open `Themes -> Open Themes Folder` from the top menu bar (stored under `%APPDATA%/sable/themes` on Windows, `~/.config/sable/themes` on Linux, or `~/Library/Application Support/sable/themes` on macOS) and drop in any `.css` file overriding `--sable-*` variables. Click `Refresh Themes` in the menu to apply it without restarting.
-
-## Project Layout
-
-```text
-src/
-├── main/        # Electron main process: window lifecycle, file I/O, chokidar watcher, asset archiving, PDF/HTML export
-├── preload/     # Context-isolated IPC bridge and sable-asset:// local image URL resolver
-├── shared/      # Shared TypeScript interfaces and default preferences
-└── renderer/
-    ├── components/  # Custom title/menu bar, sidebar (outline & file tree), tab bar, status bar, modals
-    ├── editor/      # ProseMirror schema, remark parser/serializer, input rules, node views, CodeMirror source editor
-    ├── stores/      # Zustand state store
-    └── themes/      # CSS variable definitions and base typography rules
-```
-
-## License
+## 许可证
 
 [MIT](./LICENSE)
