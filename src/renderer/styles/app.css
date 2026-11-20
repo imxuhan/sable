@@ -1,0 +1,391 @@
+@import "tailwindcss";
+@import "katex/dist/katex.min.css";
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+.sable-scroll-container {
+  background: var(--sable-bg, #ffffff);
+  transition: background-color 0.15s ease;
+}
+
+.sable-typewriter-mode .sable-editor-surface {
+  padding-top: 42vh;
+  padding-bottom: 46vh;
+}
+
+.sable-focus-mode .ProseMirror > * {
+  opacity: 0.28;
+  transition: opacity 0.14s ease;
+}
+
+.sable-focus-mode .ProseMirror > .sable-focused-block {
+  opacity: 1;
+}
+
+.sable-syntax-marker {
+  font-family: var(--sable-font-mono, monospace);
+  font-size: 0.88em;
+  color: var(--sable-muted, #6b7280);
+  opacity: 0.78;
+  padding: 0 1px;
+  user-select: none;
+}
+
+.sable-syntax-link-url {
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+
+.sable-codeblock-wrapper {
+  margin: 1.1em 0;
+  border: 1px solid var(--sable-border, #d0d7de);
+  border-radius: 8px;
+  background: var(--sable-code-bg, #f6f8fa);
+  overflow: hidden;
+}
+
+.sable-codeblock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--sable-border, #d0d7de);
+  font-size: 11px;
+  color: var(--sable-muted, #656d76);
+}
+
+.sable-codeblock-lang-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--sable-font-mono, monospace);
+  font-size: 11px;
+  color: var(--sable-fg, #1f2328);
+  width: 140px;
+}
+
+.sable-codeblock-copy-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--sable-muted, #656d76);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.sable-codeblock-copy-btn:hover {
+  background: rgba(127, 127, 127, 0.14);
+  color: var(--sable-fg);
+}
+
+.sable-codeblock-cm-host .cm-editor {
+  background: transparent !important;
+  font-family: var(--sable-font-mono, monospace);
+  font-size: 0.88em;
+}
+
+.sable-codeblock-cm-host .cm-focused {
+  outline: none !important;
+}
+
+.sable-codeblock-cm-host .cm-gutters {
+  background: transparent !important;
+  border-right: 1px solid var(--sable-border, #e5e7eb) !important;
+  color: var(--sable-muted, #8b949e) !important;
+}
+
+.sable-math-block-view,
+.sable-mermaid-block-view {
+  margin: 1.15em 0;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.sable-math-block-view:hover,
+.sable-mermaid-block-view:hover,
+.sable-math-block-view.is-editing,
+.sable-mermaid-block-view.is-editing {
+  border-color: var(--sable-border, #d0d7de);
+  background: var(--sable-code-bg, #f6f8fa);
+}
+
+.sable-math-block-preview,
+.sable-mermaid-preview {
+  text-align: center;
+  cursor: pointer;
+  overflow-x: auto;
+  padding: 4px 0;
+}
+
+.sable-mermaid-preview svg {
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.sable-special-editor-label {
+  font-size: 11px;
+  color: var(--sable-muted);
+  margin: 8px 0 4px;
+  font-family: var(--sable-font-mono, monospace);
+}
+
+.sable-special-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--sable-border);
+  border-radius: 6px;
+  background: var(--sable-bg);
+  color: var(--sable-fg);
+  font-family: var(--sable-font-mono, monospace);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 8px 10px;
+  outline: none;
+  resize: vertical;
+}
+
+.sable-math-inline-view {
+  display: inline-block;
+  padding: 0 2px;
+  border-radius: 4px;
+}
+
+.sable-math-inline-render {
+  cursor: pointer;
+}
+
+.sable-math-inline-render:hover {
+  background: var(--sable-code-bg);
+}
+
+.sable-math-inline-input {
+  border: none;
+  border-bottom: 1px solid var(--sable-accent);
+  background: var(--sable-code-bg);
+  color: var(--sable-fg);
+  font-family: var(--sable-font-mono, monospace);
+  font-size: 0.9em;
+  outline: none;
+  padding: 0 2px;
+}
+
+.sable-frontmatter-card {
+  margin-bottom: 1.8em;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px dashed var(--sable-border);
+  background: var(--sable-code-bg);
+}
+
+.sable-frontmatter-badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sable-muted);
+  margin-bottom: 4px;
+}
+
+.sable-frontmatter-textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  color: var(--sable-muted);
+  font-family: var(--sable-font-mono, monospace);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.sable-toc-card {
+  margin: 1.2em 0;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--sable-border);
+  background: var(--sable-code-bg);
+}
+
+.sable-toc-title {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--sable-muted);
+  margin-bottom: 6px;
+}
+
+.sable-toc-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--sable-accent);
+  font-size: 0.92em;
+  padding: 3px 0;
+}
+
+.sable-toc-item:hover {
+  text-decoration: underline;
+}
+
+.sable-placeholder-hint {
+  font-size: 13px;
+  color: var(--sable-muted);
+  font-style: italic;
+}
+
+.sable-mermaid-error {
+  font-size: 12px;
+  color: #dc2626;
+  padding: 6px;
+}
+
+.sable-image-wrapper {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+}
+
+.sable-image-wrapper.is-selected .sable-image-el,
+.sable-image-wrapper:hover .sable-image-el {
+  outline: 2px solid var(--sable-accent, #0969da);
+  outline-offset: 2px;
+}
+
+.sable-image-resize-handle {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--sable-accent, #0969da);
+  border: 1.5px solid #fff;
+  cursor: nwse-resize;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.sable-image-wrapper:hover .sable-image-resize-handle,
+.sable-image-wrapper.is-selected .sable-image-resize-handle {
+  opacity: 1;
+}
+
+.sable-image-context-menu {
+  position: fixed;
+  z-index: 9999;
+  width: 180px;
+  background: #ffffff;
+  color: #1f2328;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+}
+
+.sable-image-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: pre;
+}
+
+.sable-image-menu-item:hover {
+  background: #f3f4f6;
+}
+
+.sable-image-menu-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 4px 0;
+}
+
+.sable-overlay-pill {
+  background: var(--sable-bg, #ffffff);
+  color: var(--sable-fg, #1f2328);
+  border-color: var(--sable-border, #d0d7de);
+}
+
+.sable-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.sable-pill-btn:hover {
+  background: rgba(127, 127, 127, 0.15);
+}
+
+.sable-search-match {
+  background: rgba(250, 204, 21, 0.45);
+  border-radius: 2px;
+}
+
+.sable-source-editor-host {
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+  background: var(--sable-bg, #ffffff);
+  color: var(--sable-fg, #1f2328);
+}
+
+.sable-source-editor-host .cm-editor {
+  height: 100%;
+  font-family: var(--sable-font-mono, monospace);
+  font-size: calc(var(--sable-font-size, 16px) * 0.92);
+  background: var(--sable-bg, #ffffff);
+  color: var(--sable-fg, #1f2328);
+}
+
+.sable-source-editor-host .cm-scroller {
+  padding: 28px 24px 120px;
+  max-width: 960px;
+  margin: 0 auto;
+  line-height: 1.68;
+}
+
+.sable-source-editor-host .cm-gutters {
+  background: transparent !important;
+  border-right: 1px solid var(--sable-border, #e5e7eb) !important;
+  color: var(--sable-muted, #8b949e) !important;
+}
+
+.sable-source-editor-host .cm-focused {
+  outline: none !important;
+}
+
+.ProseMirror .selectedCell::after {
+  z-index: 2;
+  position: absolute;
+  content: "";
+  inset: 0;
+  background: rgba(59, 130, 246, 0.14);
+  pointer-events: none;
+}
+
+.ProseMirror td,
+.ProseMirror th {
+  position: relative;
+}
