@@ -6,7 +6,7 @@ export const DEFAULT_PREFERENCES: SablePreferences = {
   showTabBar: false,
   showSidebar: false,
   sidebarTab: 'outline',
-  sidebarWidth: 260,
+  sidebarWidth: 300,
   theme: 'github',
   inlineSyntaxReveal: true,
   showFloatingToolbar: false,
@@ -19,7 +19,9 @@ export const DEFAULT_PREFERENCES: SablePreferences = {
   pdfPageSize: 'A4',
   pdfMargins: 'default',
   htmlEmbedImages: true,
-  fontSize: 16
+  fontSize: 16,
+  codeFontFamily: 'default',
+  contentWidthPercent: 90
 }
 
 export const BUILTIN_THEMES = [

@@ -96,15 +96,42 @@ export const PreferencesModal: React.FC<{ isDark: boolean }> = ({ isDark }) => {
               />
             </label>
             <div className="flex items-center justify-between">
-              <span>编辑区基准字号 ({preferences.fontSize}px)</span>
+              <span>编辑区基准字号 ({preferences.fontSize}px，顶栏与侧栏同步等比缩放)</span>
               <input
                 type="range"
                 min={13}
-                max={22}
+                max={24}
                 value={preferences.fontSize}
                 onChange={(e) => updatePreferences({ fontSize: Number(e.target.value) })}
-                className="w-36 accent-blue-600"
+                className="w-40 accent-blue-600"
               />
+            </div>
+            <div className="flex items-center justify-between">
+              <span>正文版面宽度占比 ({preferences.contentWidthPercent ?? 90}%)</span>
+              <input
+                type="range"
+                min={55}
+                max={100}
+                step={1}
+                value={preferences.contentWidthPercent ?? 90}
+                onChange={(e) =>
+                  updatePreferences({ contentWidthPercent: Number(e.target.value) })
+                }
+                className="w-40 accent-blue-600"
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span>代码与等宽字体偏好</span>
+              <select
+                value={preferences.codeFontFamily || 'default'}
+                onChange={(e) => updatePreferences({ codeFontFamily: e.target.value })}
+                className="rounded-md border border-neutral-300 bg-transparent px-2 py-1 outline-none dark:border-neutral-600 dark:bg-neutral-800"
+              >
+                <option value="default">Consolas + HarmonyOS Sans (默认清晰)</option>
+                <option value="sarasa">Sarasa Mono SC (中英严格 2:1 等宽)</option>
+                <option value="cascadia">Cascadia Mono</option>
+                <option value="jetbrains">JetBrains Mono</option>
+              </select>
             </div>
           </section>
 

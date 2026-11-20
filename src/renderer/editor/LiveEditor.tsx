@@ -25,7 +25,7 @@ import type { ImageSaveAction, MenuCommand } from '@shared/types'
 import { sableSchema } from './schema/sableSchema'
 import { docToMarkdown, markdownToDoc } from './markdown/converter'
 import { createImeGuardPlugin } from './plugins/imeGuard'
-import { createMarkdownInputRules } from './plugins/inputRules'
+import { createMarkdownInputRules, createMidPairTypingPlugin } from './plugins/inputRules'
 import {
   createEditorKeymaps,
   getHeadingsFromState,
@@ -291,6 +291,7 @@ export const LiveEditor = React.forwardRef<LiveEditorHandle, LiveEditorProps>((p
         createImeGuardPlugin(),
         history(),
         createMarkdownInputRules(),
+        createMidPairTypingPlugin(),
         ...createEditorKeymaps({
           onRequestLinkDialog: () => openLinkModalForSelection(),
           onRequestPickImage: () => void handlePickAndInsertImage()
@@ -315,6 +316,9 @@ export const LiveEditor = React.forwardRef<LiveEditorHandle, LiveEditorProps>((p
 
     const view = new EditorView(mountEl, {
       state,
+      attributes: {
+        spellcheck: 'false'
+      },
       nodeViews: {
         code_block: (node, v, getPos) => new CodeBlockNodeView(node, v, getPos),
         math_block: (node, v, getPos) => new MathBlockNodeView(node, v, getPos),

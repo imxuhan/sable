@@ -17,13 +17,15 @@ npm install
 npm run dev
 ```
 
-## Build & Verify
+## Build & Package Standalone App
 
 ```bash
 npm run typecheck
 npm test
-npm run build
+npm run pack
 ```
+
+Running `npm run pack` produces a standalone executable at `release/Sable/Sable.exe` that can be pinned to the taskbar and set as your default `.md` editor in Windows Explorer.
 
 ## License
 

@@ -1,11 +1,14 @@
+import { promises as fs } from 'fs'
+import path from 'path'
 import { describe, expect, it } from 'vitest'
 import { EditorState, TextSelection } from 'prosemirror-state'
 import { EditorView } from 'prosemirror-view'
 import { sableSchema } from '@renderer/editor/schema/sableSchema'
-import { markdownToDoc } from '@renderer/editor/markdown/converter'
+import { docToMarkdown, markdownToDoc } from '@renderer/editor/markdown/converter'
 import { createInlineSyntaxRevealPlugin } from '@renderer/editor/plugins/inlineSyntaxReveal'
 import { createImeGuardPlugin, imePluginKey } from '@renderer/editor/plugins/imeGuard'
-import { getHeadingsFromState } from '@renderer/editor/plugins/commandsAndKeymap'
+import { createMarkdownInputRules, createMidPairTypingPlugin } from '@renderer/editor/plugins/inputRules'
+import { createEditorKeymaps, getHeadingsFromState } from '@renderer/editor/plugins/commandsAndKeymap'
 import { computeDocumentStats, useEditorStore } from '@renderer/stores/useEditorStore'
 import { buildStandaloneExportHtml } from '@renderer/editor/exportHtmlBuilder'
 
@@ -40,6 +43,75 @@ describe('Inline Syntax Reveal & IME Guard', () => {
     expect(host.querySelectorAll('.sable-syntax-marker').length).toBe(0)
 
     view.destroy()
+  })
+
+  it('converts `code` and `` mid-pair typing cleanly, hiding backticks upon closing and converting $$$$ to math_block', () => {
+    const inputRulesPlugin = createMarkdownInputRules()
+    const midPairPlugin = createMidPairTypingPlugin()
+    const revealPlugin = createInlineSyntaxRevealPlugin(() => true)
+
+    const host = document.createElement('div')
+    const view = new EditorView(host, {
+      state: EditorState.create({
+        doc: markdownToDoc(''),
+        schema: sableSchema,
+        plugins: [
+          createImeGuardPlugin(),
+          inputRulesPlugin,
+          midPairPlugin,
+          ...createEditorKeymaps(),
+          revealPlugin
+        ]
+      })
+    })
+
+    // 1. Sequential `abc`: insert "`abc", then trigger handleTextInput with closing "`"
+    view.dispatch(view.state.tr.insertText('`abc', 1))
+    const handledCode = inputRulesPlugin.props.handleTextInput!.call(
+      inputRulesPlugin,
+      view,
+      5,
+      5,
+      '`',
+      () => view.state.tr.insertText('`', 5)
+    )
+    expect(handledCode).toBe(true)
+    expect(docToMarkdown(view.state.doc)).toBe('`abc`')
+    // Right after typing closing `, cursor is outside storedMarks so backticks collapse immediately
+    expect(host.querySelectorAll('.sable-syntax-marker').length).toBe(0)
+
+    // 2. Mid-pair `` -> ArrowLeft -> type "x"
+    view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, sableSchema.nodes.paragraph.create()))
+    view.dispatch(view.state.tr.insertText('``', 1))
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 2)))
+    view.dispatch(view.state.tr.insertText('x', 2))
+    expect(docToMarkdown(view.state.doc)).toBe('`x`')
+    // Cursor is still inside the pair so backticks remain visible until ArrowRight
+    expect(host.querySelectorAll('.sable-syntax-marker').length).toBe(2)
+
+    // 3. Typing $$$$ on a line immediately creates math_block without requiring Space
+    view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, sableSchema.nodes.paragraph.create()))
+    view.dispatch(view.state.tr.insertText('$$$', 1))
+    const handledQuadDollar = inputRulesPlugin.props.handleTextInput!.call(
+      inputRulesPlugin,
+      view,
+      4,
+      4,
+      '$',
+      () => view.state.tr.insertText('$', 4)
+    )
+    expect(handledQuadDollar).toBe(true)
+    expect(view.state.doc.firstChild?.type).toBe(sableSchema.nodes.math_block)
+
+    view.destroy()
+  })
+
+  it('parses the full examples/sable-full-showcase.md document cleanly', async () => {
+    const showcasePath = path.resolve(__dirname, '../examples/sable-full-showcase.md')
+    const content = await fs.readFile(showcasePath, 'utf-8')
+    const doc = markdownToDoc(content)
+    expect(doc.firstChild?.type).toBe(sableSchema.nodes.frontmatter)
+    expect(doc.childCount).toBeGreaterThan(25)
   })
 })
 

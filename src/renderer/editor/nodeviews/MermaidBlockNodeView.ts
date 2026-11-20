@@ -52,6 +52,7 @@ export class MermaidBlockNodeView implements NodeView {
     label.textContent = 'Mermaid 图表源码  ·  按 Ctrl+Enter 或点击外部折叠源码'
 
     this.textarea = document.createElement('textarea')
+    this.textarea.spellcheck = false
     this.textarea.className = 'sable-special-textarea'
     this.textarea.rows = 5
     this.textarea.value = node.attrs.value || ''

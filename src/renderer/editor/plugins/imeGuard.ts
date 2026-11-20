@@ -26,11 +26,9 @@ export function createImeGuardPlugin(): Plugin<boolean> {
           return false
         },
         compositionend(view) {
-          setTimeout(() => {
-            if (!view.isDestroyed) {
-              view.dispatch(view.state.tr.setMeta(imePluginKey, false))
-            }
-          }, 0)
+          if (!view.isDestroyed) {
+            view.dispatch(view.state.tr.setMeta(imePluginKey, false))
+          }
           return false
         }
       }

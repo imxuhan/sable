@@ -8,6 +8,7 @@ import { buildStandaloneExportHtml } from './editor/exportHtmlBuilder'
 import { Sidebar } from './components/Sidebar'
 import { TabBar } from './components/TabBar'
 import { StatusBar } from './components/StatusBar'
+import { TitleMenuBar } from './components/TitleMenuBar'
 import { AboutModal, PreferencesModal, ShortcutsModal } from './components/Modals'
 import { buildCombinedThemeCss, isThemeDark } from './themes/themes'
 
@@ -108,8 +109,21 @@ export const App: React.FC = () => {
   )
 
   const combinedThemeCss = useMemo(
-    () => buildCombinedThemeCss(preferences.theme, customThemes, preferences.fontSize),
-    [preferences.theme, customThemes, preferences.fontSize]
+    () =>
+      buildCombinedThemeCss(
+        preferences.theme,
+        customThemes,
+        preferences.fontSize,
+        preferences.codeFontFamily,
+        preferences.contentWidthPercent
+      ),
+    [
+      preferences.theme,
+      customThemes,
+      preferences.fontSize,
+      preferences.codeFontFamily,
+      preferences.contentWidthPercent
+    ]
   )
 
   useEffect(() => {
@@ -145,28 +159,67 @@ export const App: React.FC = () => {
     }
 
     void (async () => {
-      const [persisted, loadedThemes] = await Promise.all([
+      const [persisted, loadedThemes, launchFile] = await Promise.all([
         window.sable.loadAppState(),
-        window.sable.listCustomThemes()
+        window.sable.listCustomThemes(),
+        window.sable.consumeLaunchFile()
       ])
+
+      let launchTab:
+        | {
+            id: string
+            filePath: string | null
+            title: string
+            content: string
+            savedContent: string
+            isDirty: boolean
+            mtimeMs: number | null
+            scrollRatio: number
+          }
+        | undefined
+
+      let recentList = persisted.recentFiles
+
+      if (launchFile) {
+        try {
+          const doc = await window.sable.readFile(launchFile)
+          const name = doc.filePath.split(/[\\/]/).pop() || 'Untitled.md'
+          launchTab = {
+            id: `tab-${Date.now()}`,
+            filePath: doc.filePath,
+            title: name,
+            content: doc.content,
+            savedContent: doc.content,
+            isDirty: false,
+            mtimeMs: doc.mtimeMs,
+            scrollRatio: 0
+          }
+          recentList = await window.sable.addRecentFile(doc.filePath)
+        } catch {
+          // Fall back to draft or empty tab if CLI file doesn't exist
+        }
+      }
+
       const recoveredDraft = persisted.drafts[0]
       hydrateInitial({
         preferences: persisted.preferences,
-        recentFiles: persisted.recentFiles,
+        recentFiles: recentList,
         recentWorkspace: persisted.recentWorkspace,
         customThemes: loadedThemes,
-        initialTab: recoveredDraft
-          ? {
-              id: recoveredDraft.id,
-              filePath: null,
-              title: recoveredDraft.title || 'Untitled',
-              content: recoveredDraft.content,
-              savedContent: '',
-              isDirty: Boolean(recoveredDraft.content),
-              mtimeMs: null,
-              scrollRatio: 0
-            }
-          : undefined
+        initialTab:
+          launchTab ??
+          (recoveredDraft
+            ? {
+                id: recoveredDraft.id,
+                filePath: null,
+                title: recoveredDraft.title || 'Untitled',
+                content: recoveredDraft.content,
+                savedContent: '',
+                isDirty: Boolean(recoveredDraft.content),
+                mtimeMs: null,
+                scrollRatio: 0
+              }
+            : undefined)
       })
       if (persisted.recentWorkspace) {
         await refreshWorkspaceTree(persisted.recentWorkspace)
@@ -361,10 +414,8 @@ export const App: React.FC = () => {
     [saveTabNow]
   )
 
-  useEffect(() => {
-    if (!window.sable) return
-
-    const unsubMenu = window.sable.onMenuCommand((cmd: MenuCommand, payload?: string) => {
+  const executeMenuCommand = useCallback(
+    (cmd: MenuCommand, payload?: string) => {
       const state = useEditorStore.getState()
       const prefs = state.preferences
 
@@ -372,13 +423,18 @@ export const App: React.FC = () => {
         case 'file:new':
           state.createNewTab(true)
           break
+        case 'file:new-window':
+          if (window.sable) void window.sable.createNewWindow()
+          break
         case 'file:open':
-          void window.sable.openFileDialog().then(async (doc) => {
-            if (!doc) return
-            state.openLoadedDocument(doc, state.preferences.showTabBar)
-            const rec = await window.sable.addRecentFile(doc.filePath)
-            state.setRecentFiles(rec)
-          })
+          if (window.sable) {
+            void window.sable.openFileDialog().then(async (doc) => {
+              if (!doc) return
+              state.openLoadedDocument(doc, state.preferences.showTabBar)
+              const rec = await window.sable.addRecentFile(doc.filePath)
+              state.setRecentFiles(rec)
+            })
+          }
           break
         case 'file:open-folder':
           void handleOpenFolder()
@@ -387,7 +443,9 @@ export const App: React.FC = () => {
           if (payload) void openFileByPath(payload)
           break
         case 'file:clear-recent':
-          void window.sable.clearRecentFiles().then(() => state.setRecentFiles([]))
+          if (window.sable) {
+            void window.sable.clearRecentFiles().then(() => state.setRecentFiles([]))
+          }
           break
         case 'file:save':
           void saveTabNow(false)
@@ -453,13 +511,15 @@ export const App: React.FC = () => {
           if (payload) state.updatePreferences({ theme: payload })
           break
         case 'theme:refresh':
-          void window.sable.listCustomThemes().then((list) => {
-            state.setCustomThemes(list)
-            state.flashToast('已刷新主题列表')
-          })
+          if (window.sable) {
+            void window.sable.listCustomThemes().then((list) => {
+              state.setCustomThemes(list)
+              state.flashToast('已刷新主题列表')
+            })
+          }
           break
         case 'theme:open-folder':
-          void window.sable.openThemesFolder()
+          if (window.sable) void window.sable.openThemesFolder()
           break
 
         case 'help:shortcuts':
@@ -478,6 +538,15 @@ export const App: React.FC = () => {
           }
           break
       }
+    },
+    [handleOpenFolder, handleExport, openFileByPath, saveTabNow]
+  )
+
+  useEffect(() => {
+    if (!window.sable) return
+
+    const unsubMenu = window.sable.onMenuCommand((cmd: MenuCommand, payload?: string) => {
+      executeMenuCommand(cmd, payload)
     })
 
     const unsubOpenReq = window.sable.onOpenFileRequest((filePath) => {
@@ -498,10 +567,12 @@ export const App: React.FC = () => {
       unsubExtChange()
       unsubTreeChange()
     }
-  }, [handleOpenFolder, handleExport, openFileByPath, refreshWorkspaceTree, saveTabNow])
+  }, [executeMenuCommand, openFileByPath, refreshWorkspaceTree])
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden">
+      <TitleMenuBar isDark={darkTheme} onCommand={executeMenuCommand} />
+
       {preferences.showTabBar && (
         <TabBar isDark={darkTheme} onCloseTabRequest={(id) => void handleCloseTabRequest(id)} />
       )}

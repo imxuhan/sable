@@ -2,16 +2,15 @@ import { Compartment, EditorState as CMEditorState } from '@codemirror/state'
 import {
   EditorView as CMEditorView,
   keymap as cmKeymap,
-  lineNumbers,
-   highlightActiveLine
+  lineNumbers
 } from '@codemirror/view'
 import { defaultKeymap, indentWithTab } from '@codemirror/commands'
-import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { languages } from '@codemirror/language-data'
 import type { Node as PMNode } from 'prosemirror-model'
 import { Selection, TextSelection } from 'prosemirror-state'
 import type { EditorView as PMEditorView, NodeView } from 'prosemirror-view'
 import { exitCode } from 'prosemirror-commands'
+import { sableCodeMirrorTheme } from '../codeHighlightStyle'
 
 const POPULAR_LANGUAGES = [
   '',
@@ -73,8 +72,9 @@ export class CodeBlockNodeView implements NodeView {
 
     this.langInput = document.createElement('input')
     this.langInput.type = 'text'
+    this.langInput.spellcheck = false
     this.langInput.className = 'sable-codeblock-lang-input'
-    this.langInput.placeholder = '选择或输入语言...'
+    this.langInput.placeholder = '语言'
     this.langInput.value = node.attrs.language || ''
     this.langInput.setAttribute('list', listId)
     this.langInput.addEventListener('change', () => {
@@ -120,8 +120,7 @@ export class CodeBlockNodeView implements NodeView {
         doc: this.node.textContent,
         extensions: [
           lineNumbers(),
-          highlightActiveLine(),
-          syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+          sableCodeMirrorTheme,
           this.langCompartment.of([]),
           cmKeymap.of([
             {

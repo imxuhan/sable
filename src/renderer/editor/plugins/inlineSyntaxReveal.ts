@@ -6,7 +6,7 @@ import { isImeComposing } from './imeGuard'
 
 export const inlineSyntaxRevealKey = new PluginKey<{ enabled: boolean }>('sable-inline-reveal')
 
-function findMarkSpanInParent(
+export function findMarkSpanInParent(
   parent: PMNode,
   parentStartPos: number,
   cursorOffsetInParent: number,
@@ -101,11 +101,19 @@ export function createInlineSyntaxRevealPlugin(
 
         const parentStart = $from.start()
         const offset = $from.parentOffset
+        const absCursor = parentStart + offset
+        const activeMarks = state.storedMarks ?? $from.marks()
         const decos: Decoration[] = []
 
         for (const spec of MARK_SYNTAX) {
           const span = findMarkSpanInParent(parent, parentStart, offset, spec.type)
           if (!span) continue
+
+          const strictlyInside = absCursor > span.from && absCursor < span.to
+          const markIsActiveAtEdge = activeMarks.some((m) => m.type === spec.type)
+          if (!strictlyInside && !markIsActiveAtEdge) {
+            continue
+          }
 
           const openText = spec.open(span.mark)
           const closeText = spec.close(span.mark)

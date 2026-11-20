@@ -37,6 +37,7 @@ export class MathBlockNodeView implements NodeView {
     headerLabel.textContent = 'LaTeX 公式块 ($$)  ·  按 Ctrl+Enter 或点击外部完成'
 
     this.textarea = document.createElement('textarea')
+    this.textarea.spellcheck = false
     this.textarea.className = 'sable-special-textarea'
     this.textarea.rows = 3
     this.textarea.placeholder = '输入 LaTeX 数学公式，例如 \\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}'
@@ -53,6 +54,25 @@ export class MathBlockNodeView implements NodeView {
       } else if (e.key === 'Escape') {
         e.preventDefault()
         this.commitAndClose(false)
+      } else if (e.key === 'ArrowDown') {
+        const val = this.textarea.value
+        const selEnd = this.textarea.selectionEnd
+        const onLastLine = !val.slice(selEnd).includes('\n')
+        if (onLastLine && this.textarea.selectionStart === selEnd) {
+          e.preventDefault()
+          this.commitAndClose(true)
+        }
+      } else if (e.key === 'Backspace' && this.textarea.value.length === 0) {
+        e.preventDefault()
+        this.isEditing = false
+        const pos = this.getPos()
+        if (pos !== undefined) {
+          const para = this.view.state.schema.nodes.paragraph.create()
+          const tr = this.view.state.tr.replaceWith(pos, pos + this.node.nodeSize, para)
+          tr.setSelection(TextSelection.create(tr.doc, pos + 1))
+          this.view.dispatch(tr)
+          this.view.focus()
+        }
       }
     })
 
@@ -72,7 +92,7 @@ export class MathBlockNodeView implements NodeView {
 
     this.renderPreview(node.attrs.value || '')
     if (!node.attrs.value) {
-      setTimeout(() => this.openEditor(), 10)
+      requestAnimationFrame(() => this.openEditor())
     }
   }
 
@@ -95,12 +115,15 @@ export class MathBlockNodeView implements NodeView {
   }
 
   private openEditor(): void {
-    if (this.isEditing) return
     this.isEditing = true
     this.dom.classList.add('is-editing')
     this.editorPanel.classList.remove('hidden')
-    this.textarea.value = this.node.attrs.value || ''
-    this.textarea.focus()
+    if (document.activeElement !== this.textarea) {
+      this.textarea.value = this.node.attrs.value || ''
+      requestAnimationFrame(() => {
+        this.textarea.focus()
+      })
+    }
   }
 
   private commitAndClose(moveToNextLine: boolean): void {
@@ -206,6 +229,7 @@ export class MathInlineNodeView implements NodeView {
 
     this.input = document.createElement('input')
     this.input.type = 'text'
+    this.input.spellcheck = false
     this.input.className = 'sable-math-inline-input'
     this.input.value = node.attrs.value || ''
 

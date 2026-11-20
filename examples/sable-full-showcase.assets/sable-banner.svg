@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="220" viewBox="0 0 760 220">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#181a1f" />
+      <stop offset="100%" stop-color="#282c34" />
+    </linearGradient>
+  </defs>
+  <rect width="760" height="220" rx="14" fill="url(#bg)" />
+  <rect x="24" y="24" width="712" height="172" rx="10" fill="none" stroke="#3e4451" stroke-width="1.5" stroke-dasharray="5 5" />
+  <circle cx="96" cy="110" r="36" fill="#61afef" fill-opacity="0.16" stroke="#61afef" stroke-width="2" />
+  <text x="96" y="121" text-anchor="middle" fill="#ffffff" font-family="Georgia, serif" font-size="32" font-weight="bold">S</text>
+  <text x="160" y="96" fill="#ffffff" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="26" font-weight="600">Sable Local Asset Showcase</text>
+  <text x="160" y="130" fill="#abb2bf" font-family="Consolas, Microsoft YaHei, monospace" font-size="14">sable-asset:// · Relative Path · Right-Click Zoom · Drag Resize</text>
+  <text x="160" y="158" fill="#828997" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="13">右键点击此图片可测试 25% / 50% / 67% / 100% 缩放，或拖拽右下角手柄自由调宽</text>
+</svg>

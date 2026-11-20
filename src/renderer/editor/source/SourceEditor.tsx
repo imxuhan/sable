@@ -10,8 +10,8 @@ import {
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
-import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { search, searchKeymap, openSearchPanel } from '@codemirror/search'
+import { sableCodeMirrorTheme } from '../codeHighlightStyle'
 
 interface SourceEditorProps {
   value: string
@@ -46,7 +46,7 @@ export const SourceEditor: React.FC<SourceEditorProps> = ({
         history(),
         search({ top: true }),
         markdown({ base: markdownLanguage, codeLanguages: languages }),
-        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+        sableCodeMirrorTheme,
         keymap.of([indentWithTab, ...searchKeymap, ...historyKeymap, ...defaultKeymap]),
         EditorView.updateListener.of((update) => {
           if (update.docChanged && !internalUpdateRef.current) {

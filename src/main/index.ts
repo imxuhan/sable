@@ -69,32 +69,48 @@ function extractMarkdownArg(argv: string[]): string | null {
 }
 
 const isSmokeTest = process.argv.includes('--smoke-test')
+let pendingLaunchFile: string | null = extractMarkdownArg(process.argv)
 
 function createEditorWindow(initialFilePath?: string | null): BrowserWindow {
+  if (initialFilePath) {
+    pendingLaunchFile = initialFilePath
+  }
+  const isMac = process.platform === 'darwin'
   const win = new BrowserWindow({
-    width: 1200,
-    height: 820,
-    minWidth: 680,
-    minHeight: 460,
+    width: 1340,
+    height: 860,
+    minWidth: 720,
+    minHeight: 480,
     title: 'Sable',
-    frame: true,
-    autoHideMenuBar: false,
+    frame: isMac,
+    thickFrame: true,
+    autoHideMenuBar: !isMac,
     backgroundColor: '#ffffff',
     show: false,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: false,
+      spellcheck: false
+    }
+  })
+
+  win.on('maximize', () => {
+    if (!win.isDestroyed()) {
+      win.webContents.send('sable:window-maximized', true)
+    }
+  })
+
+  win.on('unmaximize', () => {
+    if (!win.isDestroyed()) {
+      win.webContents.send('sable:window-maximized', false)
     }
   })
 
   win.once('ready-to-show', () => {
     if (!isSmokeTest) {
       win.show()
-    }
-    if (initialFilePath) {
-      win.webContents.send('sable:open-file-request', initialFilePath)
     }
   })
 
@@ -214,6 +230,12 @@ function registerIpcHandlers(): void {
     return loadPersistedState()
   })
 
+  ipcMain.handle('sable:consume-launch-file', () => {
+    const file = pendingLaunchFile
+    pendingLaunchFile = null
+    return file
+  })
+
   ipcMain.handle('sable:save-preferences', async (_event, prefs: SablePreferences) => {
     await updatePreferences(prefs)
   })
@@ -289,6 +311,36 @@ function registerIpcHandlers(): void {
     if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('mailto:')) {
       await shell.openExternal(url)
     }
+  })
+
+  ipcMain.handle('sable:window-minimize', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (win && !win.isDestroyed()) win.minimize()
+  })
+
+  ipcMain.handle('sable:window-toggle-maximize', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win || win.isDestroyed()) return false
+    if (win.isMaximized()) {
+      win.unmaximize()
+      return false
+    }
+    win.maximize()
+    return true
+  })
+
+  ipcMain.handle('sable:window-close', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (win && !win.isDestroyed()) win.close()
+  })
+
+  ipcMain.handle('sable:window-is-maximized', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    return win && !win.isDestroyed() ? win.isMaximized() : false
+  })
+
+  ipcMain.handle('sable:new-window', () => {
+    createEditorWindow()
   })
 }
 

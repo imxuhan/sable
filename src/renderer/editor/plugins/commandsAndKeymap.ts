@@ -36,7 +36,7 @@ import {
 import type { EditorView } from 'prosemirror-view'
 import type { MenuCommand } from '@shared/types'
 import { sableSchema } from '../schema/sableSchema'
-import { isImeComposing } from './imeGuard'
+import { findMarkSpanInParent } from './inlineSyntaxReveal'
 
 export function createTableNode(rows = 3, cols = 3) {
   const headerCells = Array.from({ length: cols }, (_, i) =>
@@ -104,8 +104,8 @@ export function setCurrentTableColumnAlign(
   return true
 }
 
-const handleBlockTriggerOnEnter: Command = (state, dispatch) => {
-  if (isImeComposing(state)) return false
+const handleBlockTriggerOnEnter: Command = (state, dispatch, view) => {
+  if (view?.composing) return false
   const { selection } = state
   if (!selection.empty) return false
   const $from = selection.$from
@@ -137,7 +137,7 @@ const handleBlockTriggerOnEnter: Command = (state, dispatch) => {
     return true
   }
 
-  if (text === '$$') {
+  if (text === '$$' || text === '$$$$') {
     if (dispatch) {
       const node = sableSchema.nodes.math_block.create({ value: '' })
       const tr = state.tr.replaceWith(from, to, node)
@@ -386,6 +386,32 @@ export function toggleOrInsertBlock(
   }
 }
 
+const exitInlineMarkOnArrowRight: Command = (state, dispatch) => {
+  const { selection } = state
+  if (!selection.empty) return false
+  const $from = selection.$from
+  const activeMarks = state.storedMarks ?? $from.marks()
+  if (activeMarks.length === 0) return false
+
+  const parent = $from.parent
+  if (!parent.isTextblock) return false
+  const parentStart = $from.start()
+  const absCursor = parentStart + $from.parentOffset
+
+  // Check if cursor sits at the right edge of any inline mark span
+  const exitingMarks = activeMarks.filter((m) => {
+    const span = findMarkSpanInParent(parent, parentStart, $from.parentOffset, m.type)
+    return span !== null && absCursor === span.to
+  })
+
+  if (exitingMarks.length === 0) return false
+  const remainingMarks = activeMarks.filter((m) => !exitingMarks.includes(m))
+  if (dispatch) {
+    dispatch(state.tr.setStoredMarks(remainingMarks))
+  }
+  return true
+}
+
 export function createEditorKeymaps(callbacks?: {
   onRequestLinkDialog?: () => void
   onRequestPickImage?: () => void
@@ -409,6 +435,7 @@ export function createEditorKeymaps(callbacks?: {
     'Mod-5': setBlockType(sableSchema.nodes.heading, { level: 5 }),
     'Mod-6': setBlockType(sableSchema.nodes.heading, { level: 6 }),
     'Mod-0': setBlockType(sableSchema.nodes.paragraph),
+    ArrowRight: exitInlineMarkOnArrowRight,
     'Shift-Enter': chainCommands(exitCode, insertHardBreak),
     Enter: chainCommands(
       handleBlockTriggerOnEnter,

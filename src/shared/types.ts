@@ -23,6 +23,8 @@ export interface SablePreferences {
   pdfMargins: PdfMargins
   htmlEmbedImages: boolean
   fontSize: number
+  codeFontFamily: string
+  contentWidthPercent: number
 }
 
 export interface FileTreeNode {
@@ -168,6 +170,7 @@ export interface SableBridgeAPI {
   resolveAssetUrl: (src: string, docPath: string | null) => string
 
   loadAppState: () => Promise<PersistedAppState>
+  consumeLaunchFile: () => Promise<string | null>
   savePreferences: (prefs: SablePreferences) => Promise<void>
   saveDrafts: (drafts: DraftData[]) => Promise<void>
   saveRecentWorkspace: (workspacePath: string | null) => Promise<void>
@@ -193,8 +196,14 @@ export interface SableBridgeAPI {
   syncMenuState: (state: MenuSyncState) => void
   setWindowTitle: (title: string) => void
   openExternal: (url: string) => Promise<void>
+  windowMinimize: () => Promise<void>
+  windowToggleMaximize: () => Promise<boolean>
+  windowClose: () => Promise<void>
+  isWindowMaximized: () => Promise<boolean>
+  createNewWindow: () => Promise<void>
 
   onMenuCommand: (callback: (command: MenuCommand, payload?: string) => void) => () => void
+  onWindowMaximizedChange: (callback: (maximized: boolean) => void) => () => void
   onOpenFileRequest: (callback: (filePath: string) => void) => () => void
   onExternalFileChanged: (
     callback: (event: { filePath: string; content: string; mtimeMs: number }) => void

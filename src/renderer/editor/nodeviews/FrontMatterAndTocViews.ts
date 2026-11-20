@@ -21,9 +21,10 @@ export class FrontMatterNodeView implements NodeView {
 
     const badge = document.createElement('div')
     badge.className = 'sable-frontmatter-badge'
-    badge.textContent = 'YAML Front Matter'
+    badge.textContent = 'YAML'
 
     this.textarea = document.createElement('textarea')
+    this.textarea.spellcheck = false
     this.textarea.className = 'sable-frontmatter-textarea'
     this.textarea.value = node.attrs.value || ''
     this.textarea.rows = Math.max(2, (node.attrs.value || '').split('\n').length)

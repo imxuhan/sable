@@ -69,8 +69,8 @@ const TreeItem: React.FC<{
             onSelectFile(node.path)
           }
         }}
-        style={{ paddingLeft: `${10 + depth * 14}px` }}
-        className={`group flex cursor-pointer items-center gap-1.5 py-1 pr-2 text-xs select-none ${
+        style={{ paddingLeft: `${12 + depth * 15}px` }}
+        className={`group flex cursor-pointer items-center gap-1.5 py-1.5 pr-2.5 text-[0.93em] select-none ${
           isActive
             ? 'bg-blue-500/12 font-medium text-blue-600 dark:bg-blue-400/15 dark:text-blue-300'
             : 'hover:bg-black/5 dark:hover:bg-white/5'
@@ -178,7 +178,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [creatingName, setCreatingName] = useState('')
 
   const activeTab = getActiveTab()
-  const width = preferences.sidebarWidth || 260
+  const width = preferences.sidebarWidth || 300
   const activePanel: SidebarPanel = preferences.sidebarTab
 
   useEffect(() => {
@@ -202,7 +202,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const startW = width
 
     const onMove = (ev: MouseEvent): void => {
-      const next = Math.min(480, Math.max(190, startW + (ev.clientX - startX)))
+      const next = Math.min(560, Math.max(220, startW + (ev.clientX - startX)))
       updatePreferences({ sidebarWidth: next })
     }
 
@@ -241,7 +241,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
-      style={{ width: `${width}px` }}
+      style={{ width: `${width}px`, fontSize: 'var(--sable-ui-font-size, 14.5px)' }}
       className={`relative flex shrink-0 flex-col border-r select-none ${
         isDark
           ? 'border-neutral-800 bg-[#14161a] text-neutral-300'
@@ -249,14 +249,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       }`}
     >
       <div
-        className={`flex h-9 items-center border-b px-2 text-xs font-medium ${
+        className={`flex h-[2.6em] items-center border-b px-2 text-[0.94em] font-medium ${
           isDark ? 'border-neutral-800' : 'border-neutral-200/80'
         }`}
       >
         <button
           type="button"
           onClick={() => updatePreferences({ sidebarTab: 'outline' })}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded py-1 transition ${
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1 transition ${
             activePanel === 'outline'
               ? isDark
                 ? 'bg-neutral-800 text-white'
@@ -264,13 +264,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
               : 'opacity-65 hover:opacity-100'
           }`}
         >
-          <ListTree className="h-3.5 w-3.5" />
+          <ListTree className="h-4 w-4" />
           <span>大纲</span>
         </button>
         <button
           type="button"
           onClick={() => updatePreferences({ sidebarTab: 'files' })}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded py-1 transition ${
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1 transition ${
             activePanel === 'files'
               ? isDark
                 ? 'bg-neutral-800 text-white'
@@ -278,29 +278,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
               : 'opacity-65 hover:opacity-100'
           }`}
         >
-          <FolderOpen className="h-3.5 w-3.5" />
+          <FolderOpen className="h-4 w-4" />
           <span>文件</span>
         </button>
       </div>
 
       {activePanel === 'outline' ? (
-        <div className="flex-1 overflow-y-auto py-2">
+        <div className="flex-1 overflow-y-auto py-2.5">
           {headings.length === 0 ? (
-            <div className="px-4 py-8 text-center text-xs opacity-50">
+            <div className="px-4 py-8 text-center text-[0.9em] opacity-50">
               当前文档暂无标题大纲
             </div>
           ) : (
-            headings.map((h, index) => (
-              <button
-                key={`${h.pos}-${index}`}
-                type="button"
-                onClick={() => onJumpToHeading(h.pos)}
-                style={{ paddingLeft: `${14 + (h.level - minHeadingLevel) * 14}px` }}
-                className="block w-full truncate py-1.5 pr-3 text-left text-xs transition hover:bg-black/5 dark:hover:bg-white/5"
-              >
-                <span className={h.level === 1 ? 'font-semibold' : ''}>{h.text}</span>
-              </button>
-            ))
+            headings.map((h, index) => {
+              const relDepth = h.level - minHeadingLevel
+              const sizeScale =
+                h.level === 1 ? '1.02em' : h.level === 2 ? '0.96em' : '0.91em'
+              return (
+                <button
+                  key={`${h.pos}-${index}`}
+                  type="button"
+                  title={h.text}
+                  onClick={() => onJumpToHeading(h.pos)}
+                  style={{
+                    paddingLeft: `${16 + relDepth * 16}px`,
+                    fontSize: sizeScale
+                  }}
+                  className={`block w-full truncate py-1.5 pr-3.5 text-left leading-snug transition hover:bg-black/5 dark:hover:bg-white/5 ${
+                    h.level === 1
+                      ? 'font-semibold'
+                      : h.level === 2
+                        ? 'font-medium opacity-92'
+                        : 'opacity-80'
+                  }`}
+                >
+                  {h.text}
+                </button>
+              )
+            })
           )}
         </div>
       ) : (

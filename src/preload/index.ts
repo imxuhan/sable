@@ -63,6 +63,7 @@ const api: SableBridgeAPI = {
   resolveAssetUrl,
 
   loadAppState: () => ipcRenderer.invoke('sable:load-app-state'),
+  consumeLaunchFile: () => ipcRenderer.invoke('sable:consume-launch-file'),
   savePreferences: (prefs) => ipcRenderer.invoke('sable:save-preferences', prefs),
   saveDrafts: (drafts) => ipcRenderer.invoke('sable:save-drafts', drafts),
   saveRecentWorkspace: (workspacePath) =>
@@ -79,6 +80,11 @@ const api: SableBridgeAPI = {
   syncMenuState: (state: MenuSyncState) => ipcRenderer.send('sable:sync-menu-state', state),
   setWindowTitle: (title: string) => ipcRenderer.send('sable:set-window-title', title),
   openExternal: (url: string) => ipcRenderer.invoke('sable:open-external', url),
+  windowMinimize: () => ipcRenderer.invoke('sable:window-minimize'),
+  windowToggleMaximize: () => ipcRenderer.invoke('sable:window-toggle-maximize'),
+  windowClose: () => ipcRenderer.invoke('sable:window-close'),
+  isWindowMaximized: () => ipcRenderer.invoke('sable:window-is-maximized'),
+  createNewWindow: () => ipcRenderer.invoke('sable:new-window'),
 
   onMenuCommand: (callback) => {
     const listener = (
@@ -90,6 +96,14 @@ const api: SableBridgeAPI = {
     }
     ipcRenderer.on('sable:menu-command', listener)
     return () => ipcRenderer.removeListener('sable:menu-command', listener)
+  },
+
+  onWindowMaximizedChange: (callback) => {
+    const listener = (_event: Electron.IpcRendererEvent, maximized: boolean): void => {
+      callback(maximized)
+    }
+    ipcRenderer.on('sable:window-maximized', listener)
+    return () => ipcRenderer.removeListener('sable:window-maximized', listener)
   },
 
   onOpenFileRequest: (callback) => {

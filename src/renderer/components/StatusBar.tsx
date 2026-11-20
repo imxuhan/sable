@@ -14,7 +14,8 @@ export const StatusBar: React.FC<StatusBarProps> = ({ isDark, onToggleSourceMode
 
   return (
     <footer
-      className={`relative flex h-7 shrink-0 items-center justify-between border-t px-3 text-[11px] select-none ${
+      style={{ fontSize: 'calc(var(--sable-ui-font-size, 14.5px) * 0.88)' }}
+      className={`relative flex h-8 shrink-0 items-center justify-between border-t px-3.5 select-none ${
         isDark
           ? 'border-neutral-800 bg-[#16181d] text-neutral-400'
           : 'border-neutral-200/80 bg-[#fafafa] text-neutral-500'
