@@ -213,6 +213,21 @@ export const TitleMenuBar: React.FC<TitleMenuBarProps> = ({ isDark, onCommand })
           shortcut: 'F9',
           checked: preferences.typewriterMode,
           cmd: 'view:toggle-typewriter'
+        },
+        { type: 'separator' },
+        {
+          label: '放大界面缩放',
+          shortcut: 'Ctrl+滚轮上',
+          cmd: 'view:zoom-in'
+        },
+        {
+          label: '缩小界面缩放',
+          shortcut: 'Ctrl+滚轮下',
+          cmd: 'view:zoom-out'
+        },
+        {
+          label: `恢复默认缩放 (118%)`,
+          cmd: 'view:zoom-reset'
         }
       ]
     },

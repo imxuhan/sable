@@ -25,6 +25,8 @@ export interface SablePreferences {
   fontSize: number
   codeFontFamily: string
   contentWidthPercent: number
+  zoomPercent: number
+  showHeadingDivider: boolean
 }
 
 export interface FileTreeNode {
@@ -130,6 +132,9 @@ export type MenuCommand =
   | 'view:toggle-source'
   | 'view:toggle-focus'
   | 'view:toggle-typewriter'
+  | 'view:zoom-in'
+  | 'view:zoom-out'
+  | 'view:zoom-reset'
   | 'theme:select'
   | 'theme:refresh'
   | 'theme:open-folder'
@@ -201,6 +206,7 @@ export interface SableBridgeAPI {
   windowClose: () => Promise<void>
   isWindowMaximized: () => Promise<boolean>
   createNewWindow: () => Promise<void>
+  setZoomFactor: (factor: number) => void
 
   onMenuCommand: (callback: (command: MenuCommand, payload?: string) => void) => () => void
   onWindowMaximizedChange: (callback: (maximized: boolean) => void) => () => void

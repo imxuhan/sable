@@ -172,15 +172,11 @@ export const BASE_EDITOR_TYPOGRAPHY_CSS = `
 }
 
 .sable-editor-surface h1 {
-  font-size: 2em;
-  padding-bottom: 0.28em;
-  border-bottom: 1px solid var(--sable-border);
+  font-size: 1.95em;
 }
 
 .sable-editor-surface h2 {
-  font-size: 1.52em;
-  padding-bottom: 0.22em;
-  border-bottom: 1px solid var(--sable-border);
+  font-size: 1.5em;
 }
 
 .sable-editor-surface h3 { font-size: 1.26em; }
@@ -340,7 +336,8 @@ export function buildCombinedThemeCss(
   customThemes: CustomThemeDescriptor[],
   fontSize: number,
   codeFontFamily?: string,
-  contentWidthPercent = 90
+  contentWidthPercent = 90,
+  showHeadingDivider = false
 ): string {
   const builtinVars = THEME_VARIABLES[themeId] || THEME_VARIABLES.github
   const custom = customThemes.find((t) => t.id === themeId)
@@ -348,10 +345,14 @@ export function buildCombinedThemeCss(
   const uiFontSize = Math.max(13.5, Math.round(fontSize * 0.9 * 10) / 10)
   const clampedWidth = Math.min(100, Math.max(55, contentWidthPercent || 90))
   const dynamicVars = `:root, .sable-editor-surface { --sable-font-size: ${fontSize}px; --sable-ui-font-size: ${uiFontSize}px; --sable-content-width: ${clampedWidth}%; --sable-font-mono: ${monoStack}; }`
+  const dividerCss = showHeadingDivider
+    ? `.sable-editor-surface h1 { padding-bottom: 0.28em; border-bottom: 1px solid var(--sable-border); } .sable-editor-surface h2 { padding-bottom: 0.22em; border-bottom: 1px solid var(--sable-border); }`
+    : ''
   return [
     builtinVars,
     dynamicVars,
     BASE_EDITOR_TYPOGRAPHY_CSS,
+    dividerCss,
     custom ? custom.cssContent : ''
   ].join('\n')
 }

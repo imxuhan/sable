@@ -115,16 +115,39 @@ export const App: React.FC = () => {
         customThemes,
         preferences.fontSize,
         preferences.codeFontFamily,
-        preferences.contentWidthPercent
+        preferences.contentWidthPercent,
+        preferences.showHeadingDivider
       ),
     [
       preferences.theme,
       customThemes,
       preferences.fontSize,
       preferences.codeFontFamily,
-      preferences.contentWidthPercent
+      preferences.contentWidthPercent,
+      preferences.showHeadingDivider
     ]
   )
+
+  useEffect(() => {
+    if (!window.sable) return
+    const pct = preferences.zoomPercent || 118
+    window.sable.setZoomFactor(pct / 100)
+  }, [preferences.zoomPercent])
+
+  useEffect(() => {
+    const onWheel = (e: WheelEvent): void => {
+      if (!e.ctrlKey && !e.metaKey) return
+      e.preventDefault()
+      const cur = useEditorStore.getState().preferences.zoomPercent || 118
+      const delta = e.deltaY < 0 ? 5 : -5
+      const next = Math.min(200, Math.max(65, cur + delta))
+      if (next !== cur) {
+        useEditorStore.getState().updatePreferences({ zoomPercent: next })
+      }
+    }
+    window.addEventListener('wheel', onWheel, { passive: false })
+    return () => window.removeEventListener('wheel', onWheel)
+  }, [])
 
   useEffect(() => {
     let styleEl = document.getElementById('sable-dynamic-theme') as HTMLStyleElement | null
@@ -505,6 +528,19 @@ export const App: React.FC = () => {
           break
         case 'view:toggle-typewriter':
           state.updatePreferences({ typewriterMode: !prefs.typewriterMode })
+          break
+        case 'view:zoom-in':
+          state.updatePreferences({
+            zoomPercent: Math.min(200, (prefs.zoomPercent || 118) + 8)
+          })
+          break
+        case 'view:zoom-out':
+          state.updatePreferences({
+            zoomPercent: Math.max(65, (prefs.zoomPercent || 118) - 8)
+          })
+          break
+        case 'view:zoom-reset':
+          state.updatePreferences({ zoomPercent: 118 })
           break
 
         case 'theme:select':

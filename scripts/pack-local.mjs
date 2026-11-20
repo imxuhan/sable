@@ -8,17 +8,51 @@ const electronDist = path.join(rootDir, 'node_modules', 'electron', 'dist')
 const outDir = path.join(rootDir, 'out')
 const targetDir = path.join(rootDir, 'release', 'Sable')
 
+async function pathExists(p) {
+  try {
+    await fs.access(p)
+    return true
+  } catch {
+    return false
+  }
+}
+
 async function main() {
-  await fs.rm(targetDir, { recursive: true, force: true })
-  await fs.mkdir(path.dirname(targetDir), { recursive: true })
+  const isMac = process.platform === 'darwin'
+  const expectedBinary =
+    process.platform === 'win32'
+      ? path.join(targetDir, 'Sable.exe')
+      : isMac
+        ? path.join(targetDir, 'Sable.app')
+        : path.join(targetDir, 'sable')
 
-  console.log('Copying Electron runtime...')
-  await fs.cp(electronDist, targetDir, { recursive: true })
+  const alreadyBootstrapped = await pathExists(expectedBinary)
 
-  const defaultAsar = path.join(targetDir, 'resources', 'default_app.asar')
-  await fs.rm(defaultAsar, { force: true })
+  if (!alreadyBootstrapped) {
+    await fs.rm(targetDir, { recursive: true, force: true })
+    await fs.mkdir(path.dirname(targetDir), { recursive: true })
+    console.log('Copying Electron runtime...')
+    await fs.cp(electronDist, targetDir, { recursive: true, verbatimSymlinks: true })
 
-  const appDir = path.join(targetDir, 'resources', 'app')
+    if (process.platform === 'win32') {
+      await fs.rename(path.join(targetDir, 'electron.exe'), expectedBinary)
+    } else if (isMac) {
+      await fs.rename(path.join(targetDir, 'Electron.app'), expectedBinary)
+    } else {
+      await fs.rename(path.join(targetDir, 'electron'), expectedBinary)
+    }
+  } else {
+    console.log('Reusing existing Electron runtime binary, updating app bundle...')
+  }
+
+  const resourcesDir = isMac
+    ? path.join(targetDir, 'Sable.app', 'Contents', 'Resources')
+    : path.join(targetDir, 'resources')
+
+  await fs.rm(path.join(resourcesDir, 'default_app.asar'), { force: true })
+
+  const appDir = path.join(resourcesDir, 'app')
+  await fs.rm(path.join(appDir, 'out'), { recursive: true, force: true })
   await fs.mkdir(appDir, { recursive: true })
   await fs.cp(outDir, path.join(appDir, 'out'), { recursive: true })
 
@@ -37,14 +71,7 @@ async function main() {
     'utf-8'
   )
 
-  if (process.platform === 'win32') {
-    const oldExe = path.join(targetDir, 'electron.exe')
-    const newExe = path.join(targetDir, 'Sable.exe')
-    await fs.rename(oldExe, newExe)
-    console.log(`Packaged standalone executable: ${newExe}`)
-  } else {
-    console.log(`Packaged standalone app in: ${targetDir}`)
-  }
+  console.log(`Updated standalone build: ${expectedBinary}`)
 }
 
 main().catch((err) => {

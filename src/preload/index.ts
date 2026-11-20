@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webFrame } from 'electron'
 import path from 'path'
 import type {
   MenuCommand,
@@ -85,6 +85,10 @@ const api: SableBridgeAPI = {
   windowClose: () => ipcRenderer.invoke('sable:window-close'),
   isWindowMaximized: () => ipcRenderer.invoke('sable:window-is-maximized'),
   createNewWindow: () => ipcRenderer.invoke('sable:new-window'),
+  setZoomFactor: (factor: number) => {
+    const clamped = Math.min(2.2, Math.max(0.6, factor))
+    webFrame.setZoomFactor(clamped)
+  },
 
   onMenuCommand: (callback) => {
     const listener = (

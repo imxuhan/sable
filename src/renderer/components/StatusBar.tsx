@@ -74,6 +74,15 @@ export const StatusBar: React.FC<StatusBarProps> = ({ isDark, onToggleSourceMode
       </div>
 
       <div className="flex items-center gap-3">
+        <button
+          type="button"
+          title="按住 Ctrl 滚动滚轮可缩放界面，点击恢复默认比例"
+          onClick={() => updatePreferences({ zoomPercent: 118 })}
+          className="rounded px-1.5 py-0.5 font-mono opacity-75 hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/5"
+        >
+          {preferences.zoomPercent ?? 118}%
+        </button>
+
         <span className="opacity-70">
           {activeTab.filePath
             ? activeTab.isDirty

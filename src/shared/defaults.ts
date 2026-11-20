@@ -21,7 +21,9 @@ export const DEFAULT_PREFERENCES: SablePreferences = {
   htmlEmbedImages: true,
   fontSize: 16,
   codeFontFamily: 'default',
-  contentWidthPercent: 90
+  contentWidthPercent: 90,
+  zoomPercent: 118,
+  showHeadingDivider: false
 }
 
 export const BUILTIN_THEMES = [

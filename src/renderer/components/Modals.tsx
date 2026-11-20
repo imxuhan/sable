@@ -95,6 +95,27 @@ export const PreferencesModal: React.FC<{ isDark: boolean }> = ({ isDark }) => {
                 className="h-4 w-4 accent-blue-600"
               />
             </label>
+            <label className="flex items-center justify-between">
+              <span>在一级与二级标题下方显示底部分割横线</span>
+              <input
+                type="checkbox"
+                checked={Boolean(preferences.showHeadingDivider)}
+                onChange={(e) => updatePreferences({ showHeadingDivider: e.target.checked })}
+                className="h-4 w-4 accent-blue-600"
+              />
+            </label>
+            <div className="flex items-center justify-between">
+              <span>默认打开时的界面整体缩放 ({preferences.zoomPercent ?? 118}%)</span>
+              <input
+                type="range"
+                min={75}
+                max={180}
+                step={2}
+                value={preferences.zoomPercent ?? 118}
+                onChange={(e) => updatePreferences({ zoomPercent: Number(e.target.value) })}
+                className="w-40 accent-blue-600"
+              />
+            </div>
             <div className="flex items-center justify-between">
               <span>编辑区基准字号 ({preferences.fontSize}px，顶栏与侧栏同步等比缩放)</span>
               <input
