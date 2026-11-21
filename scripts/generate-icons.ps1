@@ -1,6 +1,8 @@
 param(
-  [string]$SourceJpg = "C:\Users\xuhan\.gemini\antigravity\brain\98c40508-e406-480b-aea8-5c6379b1c255\sable_app_icon_v2_1795193018517.jpg",
-  [string]$OutDir = "d:\opentypora\resources"
+  [string]$SourceJpg = "C:\Users\xuhan\.gemini\antigravity\brain\accf8a23-fc0f-42f6-9e0a-5055205cda76\icon_candidate_c_v2_1795231097184.jpg",
+  [string]$OutDir = "d:\opentypora\resources",
+  [int]$DarkThreshold = 360,
+  [int]$InsetPx = 2
 )
 
 Add-Type -AssemblyName System.Drawing
@@ -11,12 +13,12 @@ $src = [System.Drawing.Bitmap]::FromFile($SourceJpg)
 $w = $src.Width
 $h = $src.Height
 
-# Auto-detect tight bounding box of the dark squircle (pixels where R+G+B < 680)
+# Auto-detect tight bounding box of the dark squircle (ignoring soft drop shadows)
 $minX = $w; $minY = $h; $maxX = 0; $maxY = 0
 for ($y = 0; $y -lt $h; $y += 2) {
   for ($x = 0; $x -lt $w; $x += 2) {
     $c = $src.GetPixel($x, $y)
-    if (($c.R + $c.G + $c.B) -lt 690) {
+    if (($c.R + $c.G + $c.B) -lt $DarkThreshold) {
       if ($x -lt $minX) { $minX = $x }
       if ($y -lt $minY) { $minY = $y }
       if ($x -gt $maxX) { $maxX = $x }
@@ -24,6 +26,11 @@ for ($y = 0; $y -lt $h; $y += 2) {
     }
   }
 }
+
+$minX += $InsetPx
+$minY += $InsetPx
+$maxX -= $InsetPx
+$maxY -= $InsetPx
 
 $cropW = $maxX - $minX + 1
 $cropH = $maxY - $minY + 1
