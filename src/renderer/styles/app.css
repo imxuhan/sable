@@ -158,6 +158,43 @@ pre {
   margin: 0 auto;
 }
 
+.sable-html-block-view {
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: border-color 0.15s ease, background-color 0.15s ease, padding 0.15s ease;
+}
+
+.sable-html-block-view:hover {
+  border-color: var(--sable-border, #d0d7de);
+}
+
+.sable-html-block-view.is-editing {
+  margin: 0.75em 0;
+  padding: 10px 14px;
+  border-color: var(--sable-border, #d0d7de);
+  background: var(--sable-code-bg, #f6f8fa);
+}
+
+.sable-html-block-preview {
+  cursor: pointer;
+}
+
+.sable-html-block-preview [align="center"] {
+  text-align: center;
+}
+
+.sable-html-block-preview [align="right"] {
+  text-align: right;
+}
+
+.sable-html-block-preview [align="left"] {
+  text-align: left;
+}
+
+.sable-html-block-preview img {
+  display: inline-block;
+}
+
 .sable-special-editor-label {
   font-size: 11px;
   color: var(--sable-muted);

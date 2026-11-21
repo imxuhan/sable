@@ -3,6 +3,7 @@ import mermaid from 'mermaid'
 import { DOMSerializer, type Node as PMNode } from 'prosemirror-model'
 import { sableSchema } from './schema/sableSchema'
 import { markdownToDoc } from './markdown/converter'
+import { sanitizeAndPrepareHtml } from './markdown/htmlSanitizer'
 import { getHeadingsFromState } from './plugins/commandsAndKeymap'
 import { EditorState } from 'prosemirror-state'
 
@@ -25,6 +26,19 @@ export async function buildStandaloneExportHtml(options: {
 
   container.querySelectorAll('div[data-type="frontmatter"]').forEach((el) => {
     el.remove()
+  })
+
+  const resolveExportAssetUrl =
+    typeof window !== 'undefined' && window.sable
+      ? (src: string) => window.sable.resolveAssetUrl(src, options.docPath)
+      : undefined
+
+  container.querySelectorAll('div[data-type="html-block"]').forEach((el) => {
+    const rawHtml = el.getAttribute('data-value') || ''
+    const wrap = document.createElement('div')
+    wrap.className = 'sable-html-block-preview'
+    wrap.innerHTML = sanitizeAndPrepareHtml(rawHtml, resolveExportAssetUrl)
+    el.replaceWith(wrap)
   })
 
   container.querySelectorAll('div[data-type="toc"]').forEach((el) => {
@@ -111,6 +125,18 @@ export async function buildStandaloneExportHtml(options: {
       max-width: var(--sable-max-width, 820px);
       margin: 0 auto;
       padding: 40px 32px 64px;
+    }
+    .sable-html-block-preview [align="center"] {
+      text-align: center;
+    }
+    .sable-html-block-preview [align="right"] {
+      text-align: right;
+    }
+    .sable-html-block-preview [align="left"] {
+      text-align: left;
+    }
+    .sable-html-block-preview img {
+      display: inline-block;
     }
     @media print {
       .sable-export-container {

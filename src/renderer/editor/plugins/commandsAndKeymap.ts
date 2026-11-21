@@ -36,6 +36,7 @@ import {
 import type { EditorView } from 'prosemirror-view'
 import type { MenuCommand } from '@shared/types'
 import { sableSchema } from '../schema/sableSchema'
+import { extractHeadingsFromHtml } from '../markdown/htmlSanitizer'
 import { findMarkSpanInParent } from './inlineSyntaxReveal'
 
 export function createTableNode(rows = 3, cols = 3) {
@@ -494,6 +495,15 @@ export function getHeadingsFromState(
         text: node.textContent || '未命名标题',
         pos
       })
+    } else if (node.type === sableSchema.nodes.html_block) {
+      const htmlHeadings = extractHeadingsFromHtml(String(node.attrs.value || ''))
+      for (const h of htmlHeadings) {
+        headings.push({
+          level: h.level,
+          text: h.text,
+          pos
+        })
+      }
     }
   })
   return headings

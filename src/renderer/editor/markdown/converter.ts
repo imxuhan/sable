@@ -348,7 +348,8 @@ function convertBlockNode(node: Content): PMNode[] {
     }
 
     case 'html': {
-      const raw = (anyNode.value || '').trim()
+      const rawValue = anyNode.value || ''
+      const raw = rawValue.trim()
       const parsedImg = parseImgHtmlTag(raw)
       if (parsedImg) {
         return [
@@ -358,12 +359,10 @@ function convertBlockNode(node: Content): PMNode[] {
       if (/^\[toc\]$/i.test(raw)) {
         return [sableSchema.nodes.toc.create()]
       }
-      return [
-        sableSchema.nodes.paragraph.create(
-          null,
-          raw ? convertTextWithHardBreaks(raw, []) : undefined
-        )
-      ]
+      if (!raw) {
+        return []
+      }
+      return [sableSchema.nodes.html_block.create({ value: rawValue })]
     }
 
     default: {
@@ -590,6 +589,10 @@ function serializeBlock(node: PMNode): string {
     case sableSchema.nodes.mermaid_block: {
       const val = String(node.attrs.value || '').replace(/\n$/, '')
       return `\`\`\`mermaid\n${val}\n\`\`\``
+    }
+
+    case sableSchema.nodes.html_block: {
+      return String(node.attrs.value || '').replace(/\n$/, '')
     }
 
     case sableSchema.nodes.toc:

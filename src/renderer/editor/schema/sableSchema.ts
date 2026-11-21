@@ -229,6 +229,33 @@ const nodes: Record<string, NodeSpec> = {
     }
   },
 
+  html_block: {
+    attrs: { value: { default: '' } },
+    group: 'block',
+    atom: true,
+    isolating: true,
+    selectable: true,
+    parseDOM: [
+      {
+        tag: 'div[data-type="html-block"]',
+        getAttrs(dom) {
+          return { value: (dom as HTMLElement).getAttribute('data-value') || '' }
+        }
+      }
+    ],
+    toDOM(node): DOMOutputSpec {
+      return [
+        'div',
+        {
+          'data-type': 'html-block',
+          'data-value': node.attrs.value,
+          class: 'sable-html-block'
+        },
+        node.attrs.value
+      ]
+    }
+  },
+
   toc: {
     group: 'block',
     atom: true,

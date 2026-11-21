@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { docToMarkdown, markdownToDoc, parseImgHtmlTag } from '@renderer/editor/markdown/converter'
+import {
+  extractHeadingsFromHtml,
+  sanitizeAndPrepareHtml
+} from '@renderer/editor/markdown/htmlSanitizer'
 import { sableSchema } from '@renderer/editor/schema/sableSchema'
 
 describe('Markdown <-> ProseMirror Converter', () => {
@@ -157,5 +161,41 @@ describe('Markdown <-> ProseMirror Converter', () => {
     expect(doc.child(1).attrs.id).toBe('1')
 
     expect(docToMarkdown(doc)).toBe(input)
+  })
+
+  it('round-trips block HTML such as centered README headers without falling back to plain text', () => {
+    const input = [
+      '<p align="center">',
+      '  <img src="./resources/icon.png" width="88" height="88" alt="Sable" />',
+      '</p>',
+      '',
+      '<h1 align="center">Sable</h1>',
+      '',
+      '<p align="center">本地桌面 Markdown 编辑器。</p>'
+    ].join('\n')
+
+    const doc = markdownToDoc(input)
+    expect(doc.childCount).toBe(3)
+    expect(doc.child(0).type).toBe(sableSchema.nodes.html_block)
+    expect(doc.child(1).type).toBe(sableSchema.nodes.html_block)
+    expect(doc.child(2).type).toBe(sableSchema.nodes.html_block)
+    expect(doc.child(0).attrs.value).toContain('<img src="./resources/icon.png"')
+
+    expect(docToMarkdown(doc)).toBe(input)
+  })
+
+  it('sanitizes dangerous HTML while preserving safe alignment, images, and headings', () => {
+    const dirty =
+      '<p align="center"><img src="./resources/icon.png" width="88" onerror="alert(1)" /><script>evil()</script><a href="javascript:alert(2)">bad</a></p><h1 align="center">Sable</h1>'
+    const cleaned = sanitizeAndPrepareHtml(dirty, (src) => `sable-asset://resolved/${src}`)
+
+    expect(cleaned).not.toContain('<script')
+    expect(cleaned).not.toContain('onerror')
+    expect(cleaned).not.toContain('javascript:')
+    expect(cleaned).toContain('align="center"')
+    expect(cleaned).toContain('src="sable-asset://resolved/./resources/icon.png"')
+    expect(cleaned).toContain('<h1 align="center">Sable</h1>')
+
+    expect(extractHeadingsFromHtml(dirty)).toEqual([{ level: 1, text: 'Sable' }])
   })
 })

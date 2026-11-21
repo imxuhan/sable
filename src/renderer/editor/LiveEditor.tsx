@@ -44,6 +44,7 @@ import { MathBlockNodeView, MathInlineNodeView } from './nodeviews/MathNodeViews
 import { MermaidBlockNodeView } from './nodeviews/MermaidBlockNodeView'
 import { FrontMatterNodeView, TocNodeView } from './nodeviews/FrontMatterAndTocViews'
 import { ImageNodeView } from './nodeviews/ImageNodeView'
+import { HtmlBlockNodeView } from './nodeviews/HtmlBlockNodeView'
 
 export interface LiveEditorHandle {
   executeCommand: (cmd: MenuCommand) => void
@@ -377,6 +378,8 @@ export const LiveEditor = React.forwardRef<LiveEditorHandle, LiveEditorProps>((p
         math_block: (node, v, getPos) => new MathBlockNodeView(node, v, getPos),
         math_inline: (node, v, getPos) => new MathInlineNodeView(node, v, getPos),
         mermaid_block: (node, v, getPos) => new MermaidBlockNodeView(node, v, getPos),
+        html_block: (node, v, getPos) =>
+          new HtmlBlockNodeView(node, v, getPos, () => latestPropsRef.current.docPath),
         frontmatter: (node, v, getPos) => new FrontMatterNodeView(node, v, getPos),
         toc: (node, v) => new TocNodeView(node, v),
         image: (node, v, getPos) =>

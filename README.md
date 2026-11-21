@@ -6,9 +6,7 @@
 
 <p align="center">基于 Electron、ProseMirror 与 CodeMirror 6 编写的本地桌面 Markdown 编辑器。</p>
 
-做这个项目的初衷是给自己日常写文档和论文准备一个干净的工具。编辑区采用即时渲染视图，块级语法渲染后不会因为光标移入而跳回源码，行内标记只在光标进入词内时展开，按 `Ctrl + /` 可以随时切换到 `Source Code Mode` 查看纯文本源码。
-
-## 下载使用
+做这个项目的初衷是给自己日常写文档和论文准备一个干净的工具。
 
 可以直接在 [Releases](https://github.com/imxuhan/sable/releases) 页面下载打包好的压缩包。
 
