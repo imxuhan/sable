@@ -1,7 +1,7 @@
 {
   "name": "sable",
   "productName": "Sable",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "A crisp, local-first desktop Markdown editor with seamless live rendering.",
   "license": "MIT",
   "main": "./out/main/index.js",

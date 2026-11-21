@@ -72,10 +72,37 @@ export async function registerWindowsShellIntegration(): Promise<{
     ])
     await runReg([
       'add',
+      'HKCU\\Software\\Classes\\Sable.Markdown\\Application',
+      '/v',
+      'ApplicationName',
+      '/d',
+      'Sable',
+      '/f'
+    ])
+    await runReg([
+      'add',
+      'HKCU\\Software\\Classes\\Sable.Markdown\\Application',
+      '/v',
+      'ApplicationIcon',
+      '/d',
+      iconValue,
+      '/f'
+    ])
+    await runReg([
+      'add',
       'HKCU\\Software\\Classes\\Sable.Markdown\\DefaultIcon',
       '/ve',
       '/d',
       iconValue,
+      '/f'
+    ])
+    await runReg([
+      'add',
+      'HKCU\\Software\\Classes\\Sable.Markdown\\shell\\open',
+      '/v',
+      'FriendlyAppName',
+      '/d',
+      'Sable',
       '/f'
     ])
     await runReg([
@@ -86,6 +113,51 @@ export async function registerWindowsShellIntegration(): Promise<{
       commandValue,
       '/f'
     ])
+
+    await runReg([
+      'add',
+      'HKCU\\Software\\Classes\\Applications\\Sable.exe',
+      '/v',
+      'FriendlyAppName',
+      '/d',
+      'Sable',
+      '/f'
+    ])
+    await runReg([
+      'add',
+      'HKCU\\Software\\Classes\\Applications\\Sable.exe\\DefaultIcon',
+      '/ve',
+      '/d',
+      iconValue,
+      '/f'
+    ])
+    await runReg([
+      'add',
+      'HKCU\\Software\\Classes\\Applications\\Sable.exe\\shell\\open',
+      '/v',
+      'FriendlyAppName',
+      '/d',
+      'Sable',
+      '/f'
+    ])
+    await runReg([
+      'add',
+      'HKCU\\Software\\Classes\\Applications\\Sable.exe\\shell\\open\\command',
+      '/ve',
+      '/d',
+      commandValue,
+      '/f'
+    ])
+
+    // Refresh Windows MuiCache so "Open with" never shows stale "Electron" name
+    const muiCacheKey =
+      'HKCU\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\MuiCache'
+    await runReg(['add', muiCacheKey, '/v', `${exePath}.FriendlyAppName`, '/d', 'Sable', '/f']).catch(
+      () => undefined
+    )
+    await runReg(['add', muiCacheKey, '/v', `${exePath}.ApplicationCompany`, '/d', 'Sable', '/f']).catch(
+      () => undefined
+    )
 
     await runReg([
       'add',
@@ -128,6 +200,9 @@ export async function unregisterWindowsShellIntegration(): Promise<{
       () => undefined
     )
     await runReg(['delete', 'HKCU\\Software\\Classes\\Sable.Markdown', '/f']).catch(
+      () => undefined
+    )
+    await runReg(['delete', 'HKCU\\Software\\Classes\\Applications\\Sable.exe', '/f']).catch(
       () => undefined
     )
     await runReg([

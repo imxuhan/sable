@@ -87,7 +87,7 @@ async function main() {
           'product-version': rawPkg.version,
           'version-string': {
             ProductName: 'Sable',
-            FileDescription: 'Sable Markdown Editor',
+            FileDescription: 'Sable',
             CompanyName: 'Sable',
             InternalName: 'Sable.exe',
             OriginalFilename: 'Sable.exe'
